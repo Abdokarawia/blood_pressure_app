@@ -26,7 +26,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final isSmallScreen = screenSize.width < 600;
 
     return Container(
-      margin: const EdgeInsets.only(top: 60),
+      margin: const EdgeInsets.only(top: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -43,7 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               );
             },
             child: Container(
-              margin: EdgeInsets.fromLTRB(20, isSmallScreen ? 10 : 20, 20, 20),
+              margin: EdgeInsets.fromLTRB(10, isSmallScreen ? 10 : 10, 20, 20),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -99,16 +99,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       ],
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Iconsax.setting_2,
-                      color: Colors.amber,
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      _showNotificationSettings();
-                    },
                   ),
                 ],
               ),
@@ -198,88 +188,4 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _showNotificationSettings() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Notification Settings',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildSettingSwitch(
-                title: 'Health Alerts',
-                subtitle: 'Receive important health notifications',
-                value: _healthAlertsEnabled,
-                onChanged: (bool value) {
-                  setState(() {
-                    _healthAlertsEnabled = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 15),
-              _buildSettingSwitch(
-                title: 'Reminder Notifications',
-                subtitle: 'Get reminders for medications and appointments',
-                value: _reminderNotificationsEnabled,
-                onChanged: (bool value) {
-                  setState(() {
-                    _reminderNotificationsEnabled = value;
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingSwitch({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required Function(bool) onChanged,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: GoogleFonts.poppins(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        CupertinoSwitch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: Colors.amber,
-        ),
-      ],
-    );
-  }
 }

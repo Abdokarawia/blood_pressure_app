@@ -70,7 +70,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
       ProfileManagementScreen(animationController: _pageTransitionController),
       MedicationRemindersScreen(animationController: _pageTransitionController),
       GoalRemindersScreen(animationController: _pageTransitionController),
-      EmergencyContactsScreen(animationController: _pageTransitionController),
+      EmergencyContactsScreen(),
       NotificationsScreen(animationController: _pageTransitionController),
     ];
 
@@ -161,7 +161,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
               Expanded(
                 child: GridView.count(
                   crossAxisCount: 3,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   mainAxisSpacing: 20,
                   crossAxisSpacing: 20,
                   children: [
@@ -216,7 +216,6 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         body: Column(
           children: [
             _buildEnhancedHeader(),
-            _buildFloatingSearchBar(),
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -255,7 +254,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hello, Alex',
+                    'Hello, Ahmed',
                     style: GoogleFonts.poppins(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -281,88 +280,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(width: 5),
-                      AnimatedBuilder(
-                        animation: _pulseAnimationController,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: 1.0 + _pulseAnimationController.value * 0.2,
-                            child: Icon(
-                              Iconsax.heart,
-                              color: Colors.redAccent.withOpacity(
-                                0.7 + _pulseAnimationController.value * 0.3,
-                              ),
-                              size: 16,
-                            ),
-                          );
-                        },
-                      ),
                     ],
                   ),
                 ],
-              ),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                },
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Hero(
-                      tag: 'profileAvatar',
-                      child: Container(
-                        width: 45,
-                        height: 45,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.teal.shade300,
-                              Colors.green.shade400,
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.teal.withOpacity(0.4),
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(50),
-                          child: const Icon(
-                            Iconsax.profile_circle,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: Colors.greenAccent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -372,101 +292,6 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFloatingSearchBar() {
-    return Center(
-      child: AnimatedBuilder(
-        animation: _searchExpandController,
-        builder: (context, child) {
-          final width = _isSearchExpanded
-              ? MediaQuery.of(context).size.width * 0.95
-              : MediaQuery.of(context).size.width * 0.9;
-
-          return Container(
-            width: width,
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.teal.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _toggleSearch,
-                    splashColor: Colors.teal.withOpacity(0.1),
-                    highlightColor: Colors.transparent,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _isSearchExpanded
-                                ? Iconsax.close_circle
-                                : Iconsax.search_normal,
-                            color: Colors.teal.shade700,
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: _isSearchExpanded
-                                ? TextFormField(
-                              autofocus: true,
-                              decoration: InputDecoration(
-                                hintText: 'Search for health services',
-                                hintStyle: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.grey[400],
-                                ),
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            )
-                                : Text(
-                              'Search for health services',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey[400],
-                              ),
-                            ),
-                          ),
-                          if (!_isSearchExpanded)
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.teal.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Iconsax.microphone,
-                                size: 16,
-                                color: Colors.teal.shade700,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildAdvancedFAB() {
     return GestureDetector(

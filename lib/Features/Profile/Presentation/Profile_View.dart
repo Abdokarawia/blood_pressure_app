@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class ProfileData {
   String name;
@@ -19,9 +18,6 @@ class ProfileData {
   // Medical Conditions
   List<String> medicalConditions;
 
-  // Medications
-  List<Medication> medications;
-
   // Health Goals
   HealthGoals healthGoals;
 
@@ -35,13 +31,11 @@ class ProfileData {
     double? bmi,
     BloodPressureProfile? bloodPressureProfile,
     List<String>? medicalConditions,
-    List<Medication>? medications,
     HealthGoals? healthGoals,
   }) :
         bmi = bmi ?? _calculateBMI(height, weight),
         bloodPressureProfile = bloodPressureProfile ?? BloodPressureProfile(),
         medicalConditions = medicalConditions ?? [],
-        medications = medications ?? [],
         healthGoals = healthGoals ?? HealthGoals();
 
   static double _calculateBMI(double height, double weight) {
@@ -74,22 +68,6 @@ class BloodPressureReading {
     required this.date,
     required this.systolic,
     required this.diastolic,
-  });
-}
-
-class Medication {
-  String name;
-  String dosage;
-  String frequency;
-  DateTime? startDate;
-  DateTime? endDate;
-
-  Medication({
-    required this.name,
-    required this.dosage,
-    required this.frequency,
-    this.startDate,
-    this.endDate,
   });
 }
 
@@ -140,20 +118,6 @@ class _ProfileManagementScreenState extends State<ProfileManagementScreen> {
         ],
       ),
       medicalConditions: ['Mild Hypertension', 'Seasonal Allergies'],
-      medications: [
-        Medication(
-          name: 'Lisinopril',
-          dosage: '10mg',
-          frequency: 'Once daily',
-          startDate: DateTime(2024, 1, 15),
-        ),
-        Medication(
-          name: 'Loratadine',
-          dosage: '10mg',
-          frequency: 'As needed',
-          startDate: DateTime(2023, 11, 1),
-        ),
-      ],
       healthGoals: HealthGoals(
         weightGoal: 68.0,
         dailyStepGoal: 12000,
@@ -211,21 +175,6 @@ class _ProfileManagementScreenState extends State<ProfileManagementScreen> {
                   _buildTextField(_systolicController, 'Systolic', Iconsax.health, keyboardType: TextInputType.number),
                   _buildTextField(_diastolicController, 'Diastolic', Iconsax.health, keyboardType: TextInputType.number),
 
-                  // Medications Section
-                  _buildSectionHeader('Medications'),
-                  ..._profileData.medications.map((med) => _buildMedicationTile(med, setState)).toList(),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      _addMedicationDialog(setState);
-                    },
-                    icon: const Icon(Iconsax.add),
-                    label: Text('Add Medication', style: GoogleFonts.poppins()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal.shade100,
-                      foregroundColor: Colors.teal.shade700,
-                    ),
-                  ),
-
                   const SizedBox(height: 20),
                   Center(
                     child: ElevatedButton(
@@ -268,68 +217,6 @@ class _ProfileManagementScreenState extends State<ProfileManagementScreen> {
     );
   }
 
-  void _addMedicationDialog(StateSetter setState) {
-    final _medNameController = TextEditingController();
-    final _medDosageController = TextEditingController();
-    final _medFrequencyController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add Medication', style: GoogleFonts.poppins()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _medNameController,
-              decoration: InputDecoration(
-                labelText: 'Medication Name',
-                prefixIcon: const Icon(Iconsax.health),
-                labelStyle: GoogleFonts.poppins(),
-              ),
-            ),
-            TextField(
-              controller: _medDosageController,
-              decoration: InputDecoration(
-                labelText: 'Dosage',
-                prefixIcon: const Icon(Iconsax.document),
-                labelStyle: GoogleFonts.poppins(),
-              ),
-            ),
-            TextField(
-              controller: _medFrequencyController,
-              decoration: InputDecoration(
-                labelText: 'Frequency',
-                prefixIcon: const Icon(Iconsax.clock),
-                labelStyle: GoogleFonts.poppins(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.poppins()),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _profileData.medications.add(Medication(
-                  name: _medNameController.text,
-                  dosage: _medDosageController.text,
-                  frequency: _medFrequencyController.text,
-                  startDate: DateTime.now(),
-                ));
-              });
-              Navigator.pop(context);
-            },
-            child: Text('Add', style: GoogleFonts.poppins()),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 15),
@@ -340,22 +227,6 @@ class _ProfileManagementScreenState extends State<ProfileManagementScreen> {
           fontWeight: FontWeight.bold,
           color: Colors.teal.shade700,
         ),
-      ),
-    );
-  }
-
-  Widget _buildMedicationTile(Medication med, StateSetter setState) {
-    return ListTile(
-      leading: Icon(Iconsax.health, color: Colors.teal.shade300),
-      title: Text(med.name, style: GoogleFonts.poppins()),
-      subtitle: Text('${med.dosage} - ${med.frequency}', style: GoogleFonts.poppins()),
-      trailing: IconButton(
-        icon: Icon(Iconsax.trash, color: Colors.red.shade300),
-        onPressed: () {
-          setState(() {
-            _profileData.medications.remove(med);
-          });
-        },
       ),
     );
   }
@@ -402,7 +273,7 @@ class _ProfileManagementScreenState extends State<ProfileManagementScreen> {
           // Profile Header
           SliverToBoxAdapter(
             child: Container(
-              margin: const EdgeInsets.only(top: 60),
+              margin: const EdgeInsets.only(top: 5),
               child: AnimatedBuilder(
                 animation: widget.animationController,
                 builder: (context, child) {
@@ -523,23 +394,6 @@ class _ProfileManagementScreenState extends State<ProfileManagementScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-
-              // Medications Section
-              _buildHealthSection(
-                title: 'Medications',
-                content: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _profileData.medications.map((med) => ListTile(
-                    leading: Icon(Iconsax.health, color: Colors.teal.shade300),
-                    title: Text(med.name, style: GoogleFonts.poppins()),
-                    subtitle: Text('${med.dosage} - ${med.frequency}', style: GoogleFonts.poppins()),
-                    trailing: Text(
-                      'Started: ${_formatDate(med.startDate ?? DateTime.now())}',
-                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-                    ),
-                  )).toList(),
                 ),
               ),
 
