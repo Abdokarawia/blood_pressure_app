@@ -10,6 +10,9 @@ import '../../GoalReminders/presentation/goal_reminders_view.dart';
 import '../../MedicationReminders/Presentation/medication_reminders_view.dart';
 import '../../Notifications/Presentation/notifications_view.dart';
 import '../../Profile/Presentation/Profile_View.dart';
+import '../../HealthDataInput/Presentation/health_data_input_view.dart';
+import '../../HealthDataAnalysis/Presentation/health_data_analysis_view.dart';
+import '../../DataHistory/Presentation/data_history_view.dart'; // Add import for new screen
 
 // Main Tab Screen with Enhanced UI
 class TabScreen extends StatefulWidget {
@@ -70,6 +73,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
       ProfileManagementScreen(animationController: _pageTransitionController),
       MedicationRemindersScreen(animationController: _pageTransitionController),
       GoalRemindersScreen(animationController: _pageTransitionController),
+      HealthDataInputScreen(animationController: _pageTransitionController),
+      HealthDataAnalysisScreen(animationController: _pageTransitionController),
+      DataHistoryScreen(animationController: _pageTransitionController), // New screen added
       EmergencyContactsScreen(),
       NotificationsScreen(animationController: _pageTransitionController),
     ];
@@ -194,6 +200,11 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                       icon: Iconsax.profile_add,
                       title: 'Contact',
                       color: Colors.green,
+                    ),
+                    _buildAddOptionCard(
+                      icon: Iconsax.share,
+                      title: 'Share Data',
+                      color: Colors.purple,
                     ),
                   ],
                 ),
@@ -411,8 +422,11 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
           _buildModernNavItem(0, Iconsax.profile_2user, 'Profile'),
           _buildModernNavItem(1, Iconsax.health, 'Meds'),
           _buildModernNavItem(2, Iconsax.activity, 'Goals'),
-          _buildModernNavItem(3, Iconsax.call, 'Emergency'),
-          _buildModernNavItem(4, Iconsax.notification, 'Alerts'),
+          _buildModernNavItem(3, Iconsax.chart, 'Input'),
+          _buildModernNavItem(4, Iconsax.graph, 'Analysis'),
+          _buildModernNavItem(5, Iconsax.calendar, 'History'), // New tab
+          _buildModernNavItem(6, Iconsax.call, 'Emergency'),
+          _buildModernNavItem(7, Iconsax.notification, 'Alerts'),
         ],
       ),
     );
