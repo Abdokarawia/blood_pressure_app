@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
 class HealthDataInputScreen extends StatefulWidget {
   final AnimationController animationController;
@@ -62,32 +61,6 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen>
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.teal.shade700,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
   void _saveData() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -126,18 +99,6 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen>
     }
   }
 
-  void _clearFields() {
-    _heartRateController.clear();
-    _bloodPressureController.clear();
-    _caloriesBurnedController.clear();
-    _distanceController.clear();
-    _stepsController.clear();
-    _activeMinutesController.clear();
-    _sleepHoursController.clear();
-    _hydrationController.clear();
-    _weightController.clear();
-    _notesController.clear();
-  }
 
   void _showTips(BuildContext context, String title) {
     String tipContent = '';
@@ -218,89 +179,6 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // App Bar with Date Selector
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isSmallScreen ? 16.0 : 24.0,
-                        vertical: 16.0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Health Tracker',
-                                style: GoogleFonts.poppins(
-                                  fontSize: isSmallScreen ? 22 : 26,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.teal.shade800,
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Iconsax.setting_4,
-                                  color: Colors.grey.shade700,
-                                ),
-                                onPressed: () {},
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 4),
-                          GestureDetector(
-                            onTap: () => _selectDate(context),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.teal.shade50,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Iconsax.calendar,
-                                    size: 20,
-                                    color: Colors.teal.shade800,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    DateFormat(
-                                      'EEEE, MMMM d, y',
-                                    ).format(_selectedDate),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.teal.shade800,
-                                    ),
-                                  ),
-                                  SizedBox(width: 4),
-                                  Icon(
-                                    Icons.arrow_drop_down,
-                                    color: Colors.teal.shade800,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
                     // Tab Bar
                     Container(
                       height: 60,
@@ -372,22 +250,11 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen>
                       ),
                     ),
 
-                    // Save Button at the bottom
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(
                         horizontal: isSmallScreen ? 16.0 : 24.0,
                         vertical: 16.0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, -2),
-                          ),
-                        ],
                       ),
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _saveData,
@@ -416,7 +283,7 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen>
                                 : Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Iconsax.save_2),
+                                    Icon(Iconsax.save_2 , color: Colors.white,),
                                     SizedBox(width: 10),
                                     Text(
                                       'Save Health Data',
@@ -590,21 +457,9 @@ class ActivityTabView extends StatelessWidget {
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: Icon(
-                    Iconsax.info_circle,
-                    color: Colors.grey.shade600,
-                    size: 22,
-                  ),
-                  onPressed: () => onTipPressed(context, 'Steps'),
-                ),
               ],
             ),
-            SizedBox(height: 20),
-            StepProgressIndicator(
-              currentValue: int.tryParse(stepsController.text) ?? 0,
-              maxValue: 10000,
-            ),
+
             SizedBox(height: 20),
             TextFormField(
               controller: stepsController,
@@ -734,14 +589,6 @@ class ActivityTabView extends StatelessWidget {
                       ],
                     ),
                   ],
-                ),
-                IconButton(
-                  icon: Icon(
-                    Iconsax.info_circle,
-                    color: Colors.grey.shade600,
-                    size: 22,
-                  ),
-                  onPressed: () => onTipPressed(context, title),
                 ),
               ],
             ),
@@ -974,14 +821,6 @@ class VitalsTabView extends StatelessWidget {
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: Icon(
-                    Iconsax.info_circle,
-                    color: Colors.grey.shade600,
-                    size: 22,
-                  ),
-                  onPressed: () => onTipPressed(context, title),
-                ),
               ],
             ),
             SizedBox(height: 16),
@@ -1124,14 +963,6 @@ class NutritionTabView extends StatelessWidget {
                           ],
                         ),
                       ],
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Iconsax.info_circle,
-                        color: Colors.grey.shade600,
-                        size: 22,
-                      ),
-                      onPressed: () => onTipPressed(context, 'Notes'),
                     ),
                   ],
                 ),

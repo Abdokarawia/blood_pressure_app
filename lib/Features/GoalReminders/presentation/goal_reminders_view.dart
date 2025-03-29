@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
+
+const Color kBaseColor = Colors.teal;
 
 class GoalRemindersScreen extends StatefulWidget {
   final AnimationController animationController;
@@ -13,43 +14,17 @@ class GoalRemindersScreen extends StatefulWidget {
   _GoalRemindersScreenState createState() => _GoalRemindersScreenState();
 }
 
-class _GoalRemindersScreenState extends State<GoalRemindersScreen> with SingleTickerProviderStateMixin {
-  final List<String> _predefinedGoals = [
-    'Blood Pressure Control',
-    'Medication Adherence',
-    'Blood Sugar Management',
-    'Daily Step Count',
-    'Sleep Quality',
-    'Hydration Tracking',
-    'Weight Management',
-    'Mental Health Check-in',
-    'Cardio Fitness',
-    'Strength Training',
-    'Nutrition Balance',
-    'Stress Reduction',
-    'Meditation Practice',
-    'Water Intake',
-  ];
-
+class _GoalRemindersScreenState extends State<GoalRemindersScreen> {
   late List<HealthGoal> _healthGoals;
-  late List<HealthGoal> _previousGoals;
-
+  final TextEditingController _goalTitleController = TextEditingController();
   final TextEditingController _targetController = TextEditingController();
-  final TextEditingController _searchController = TextEditingController();
 
-  String? _selectedGoalTitle;
   GoalCategory? _selectedCategory;
-  ActivityType? _selectedActivityType;
   GoalDuration _selectedDuration = GoalDuration.daily;
-
-  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-
-    _tabController = TabController(length: 2, vsync: this);
-
     _healthGoals = [
       HealthGoal(
         title: 'Daily Step Count',
@@ -57,10 +32,8 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> with SingleTi
         icon: Iconsax.activity,
         color: Colors.blue,
         category: GoalCategory.fitness,
-        activityType: ActivityType.exercise,
         duration: GoalDuration.daily,
         currentProgress: 7500,
-        status: GoalStatus.inProgress,
       ),
       HealthGoal(
         title: 'Meditation Practice',
@@ -68,62 +41,38 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> with SingleTi
         icon: Iconsax.moon,
         color: Colors.purple,
         category: GoalCategory.mentalHealth,
-        activityType: ActivityType.mindfulness,
         duration: GoalDuration.daily,
         currentProgress: 20,
-        status: GoalStatus.inProgress,
       ),
       HealthGoal(
         title: 'Hydration Tracking',
         target: 2.5,
-        icon: Iconsax.map,
+        icon: Iconsax.drop,
         color: Colors.teal,
         category: GoalCategory.wellness,
-        activityType: ActivityType.hydration,
         duration: GoalDuration.daily,
         currentProgress: 1.8,
-        status: GoalStatus.inProgress,
-      ),
-    ];
-
-    _previousGoals = [
-      HealthGoal(
-        title: 'Weight Management',
-        target: 75.0,
-        icon: Iconsax.chart,
-        color: Colors.green,
-        category: GoalCategory.fitness,
-        activityType: ActivityType.exercise,
-        duration: GoalDuration.monthly,
-        completedDate: DateTime(2024, 2, 15),
-        status: GoalStatus.completed,
-      ),
-      HealthGoal(
-        title: 'Blood Sugar Management',
-        target: 120,
-        icon: Iconsax.health,
-        color: Colors.red,
-        category: GoalCategory.wellness,
-        activityType: ActivityType.diet,
-        duration: GoalDuration.weekly,
-        completedDate: DateTime(2024, 3, 10),
-        status: GoalStatus.abandoned,
       ),
     ];
   }
 
   @override
   void dispose() {
+    _goalTitleController.dispose();
     _targetController.dispose();
-    _searchController.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
   void _showAddGoalBottomSheet() {
+    _goalTitleController.clear();
+    _targetController.clear();
+    _selectedCategory = null;
+    _selectedDuration = GoalDuration.daily;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
@@ -131,149 +80,278 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> with SingleTi
         builder: (context, setState) => Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 20,
             left: 20,
             right: 20,
+            top: 20,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Create New Goal',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                value: _selectedGoalTitle,
-                hint: Text('Select Goal', style: GoogleFonts.poppins()),
-                items: _predefinedGoals.map((goal) {
-                  return DropdownMenuItem(
-                    value: goal,
-                    child: Text(goal, style: GoogleFonts.poppins(color: Colors.black)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGoalTitle = value;
-                  });
-                },
-                decoration: _inputDecoration('Goal Title'),
-                dropdownColor: Colors.white,
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: _targetController,
-                keyboardType: TextInputType.number,
-                decoration: _inputDecoration('Target Value'),
-              ),
-              const SizedBox(height: 15),
-              DropdownButtonFormField<GoalCategory>(
-                value: _selectedCategory,
-                hint: Text('Select Category', style: GoogleFonts.poppins()),
-                items: GoalCategory.values.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category.displayName, style: GoogleFonts.poppins(color: Colors.black)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategory = value;
-                  });
-                },
-                decoration: _inputDecoration('Category'),
-                dropdownColor: Colors.white,
-              ),
-              const SizedBox(height: 15),
-              DropdownButtonFormField<GoalDuration>(
-                value: _selectedDuration,
-                items: GoalDuration.values.map((duration) {
-                  return DropdownMenuItem(
-                    value: duration,
-                    child: Text(duration.displayName, style: GoogleFonts.poppins(color: Colors.black)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedDuration = value!;
-                  });
-                },
-                decoration: _inputDecoration('Duration'),
-                dropdownColor: Colors.white,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _addNewGoal,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                child: Text(
-                  'Create Goal',
+                const SizedBox(height: 16),
+                Text(
+                  'Create New Goal',
                   style: GoogleFonts.poppins(
-                    color: Colors.white,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color: kBaseColor,
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 24),
+
+                // Goal Title
+                Text(
+                  'Goal Title',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _goalTitleController,
+                  decoration: _inputDecoration('Enter goal title'),
+                ),
+                const SizedBox(height: 20),
+
+                // Target Value
+                Text(
+                  'Target Value',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _targetController,
+                  keyboardType: TextInputType.number,
+                  decoration: _inputDecoration(
+                    _selectedDuration == GoalDuration.daily
+                        ? 'Number of days'
+                        : 'Number of months',
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Category Selection
+                Text(
+                  'Category',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: GoalCategory.values.map((category) {
+                    final isSelected = _selectedCategory == category;
+                    return ChoiceChip(
+                      label: Text(
+                        category.displayName,
+                        style: GoogleFonts.poppins(
+                          color: isSelected ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedCategory = selected ? category : null;
+                        });
+                      },
+                      selectedColor: kBaseColor,
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+
+                // Duration Selection
+                Text(
+                  'Duration',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: Text(
+                          'Daily',
+                          style: GoogleFonts.poppins(
+                            color: _selectedDuration == GoalDuration.daily
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+                        selected: _selectedDuration == GoalDuration.daily,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedDuration = GoalDuration.daily;
+                          });
+                        },
+                        selectedColor: kBaseColor,
+                        backgroundColor: Colors.grey[200],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: Text(
+                          'Monthly',
+                          style: GoogleFonts.poppins(
+                            color: _selectedDuration == GoalDuration.monthly
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+                        selected: _selectedDuration == GoalDuration.monthly,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedDuration = GoalDuration.monthly;
+                          });
+                        },
+                        selectedColor: kBaseColor,
+                        backgroundColor: Colors.grey[200],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 30),
+
+                // Create Goal Button
+                ElevatedButton(
+                  onPressed: () {
+                    if (_validateInputs()) {
+                      _addNewGoal();
+                      Navigator.pop(context);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kBaseColor,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Create Goal',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _addNewGoal() {
-    if (_selectedGoalTitle != null && _targetController.text.isNotEmpty) {
-      final newGoal = HealthGoal(
-        title: _selectedGoalTitle!,
-        target: double.parse(_targetController.text),
-        icon: _getIconForGoal(_selectedGoalTitle!),
-        color: _getColorForCategory(_selectedCategory),
-        category: _selectedCategory ?? GoalCategory.wellness,
-        activityType: _selectedActivityType ?? ActivityType.general,
-        duration: _selectedDuration,
-        currentProgress: 0,
-        status: GoalStatus.inProgress,
+  bool _validateInputs() {
+    if (_goalTitleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter a goal title',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
-
-      setState(() {
-        _healthGoals.add(newGoal);
-      });
-
-      _selectedGoalTitle = null;
-      _targetController.clear();
-      _selectedCategory = null;
-      _selectedDuration = GoalDuration.daily;
-
-      Navigator.pop(context);
+      return false;
     }
+
+    if (_targetController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please enter a target value',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
+
+    if (_selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please select a category',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
+
+    return true;
   }
 
-  IconData _getIconForGoal(String goalTitle) {
-    switch (goalTitle) {
-      case 'Daily Step Count':
+  void _addNewGoal() {
+    final newGoal = HealthGoal(
+      title: _goalTitleController.text,
+      target: double.parse(_targetController.text),
+      icon: _getIconForCategory(_selectedCategory!),
+      color: _getColorForCategory(_selectedCategory!),
+      category: _selectedCategory!,
+      duration: _selectedDuration,
+      currentProgress: 0,
+    );
+
+    setState(() {
+      _healthGoals.add(newGoal);
+    });
+  }
+
+  IconData _getIconForCategory(GoalCategory category) {
+    switch (category) {
+      case GoalCategory.fitness:
         return Iconsax.activity;
-      case 'Meditation Practice':
+      case GoalCategory.mentalHealth:
         return Iconsax.moon;
-      case 'Hydration Tracking':
-        return Iconsax.money;
-      case 'Blood Pressure Control':
+      case GoalCategory.wellness:
         return Iconsax.health;
-      default:
-        return Iconsax.chart;
     }
   }
 
-  MaterialColor _getColorForCategory(GoalCategory? category) {
+  MaterialColor _getColorForCategory(GoalCategory category) {
     switch (category) {
       case GoalCategory.fitness:
         return Colors.blue;
@@ -281,107 +359,127 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> with SingleTi
         return Colors.purple;
       case GoalCategory.wellness:
         return Colors.teal;
-      default:
-        return Colors.deepPurple;
     }
   }
 
   InputDecoration _inputDecoration(String labelText) {
     return InputDecoration(
       labelText: labelText,
-      labelStyle: GoogleFonts.poppins(),
+      labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
+      filled: true,
+      fillColor: Colors.grey[100],
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Colors.deepPurple),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
       ),
     );
   }
 
   Widget _buildGoalCard(HealthGoal goal) {
-    double progressPercentage = goal.currentProgress != null && goal.target > 0
-        ? (goal.currentProgress! / goal.target) * 100
-        : 0;
+    double progressPercentage = (goal.currentProgress / goal.target) * 100;
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(15.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: goal.color.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(goal.icon, color: goal.color),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {},
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: goal.color.withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 10),
-                    Text(
-                      goal.title,
+                    child: Icon(goal.icon, color: goal.color),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          goal.title,
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          goal.category.displayName,
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: kBaseColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      goal.duration.displayName,
                       style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.deepPurple,
+                        color: kBaseColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ],
-                ),
-                Text(
-                  '${goal.duration.displayName} Goal',
-                  style: GoogleFonts.poppins(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: progressPercentage / 100,
-              backgroundColor: goal.color.withOpacity(0.2),
-              valueColor: AlwaysStoppedAnimation<Color>(goal.color),
-              minHeight: 10,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Progress: ${goal.currentProgress?.toStringAsFixed(1) ?? '0'} / ${goal.target}',
-                  style: GoogleFonts.poppins(
-                    color: Colors.grey.shade700,
-                    fontSize: 14,
+                ],
+              ),
+              const SizedBox(height: 16),
+              LinearProgressIndicator(
+                value: progressPercentage / 100,
+                backgroundColor: goal.color.withOpacity(0.1),
+                valueColor: AlwaysStoppedAnimation<Color>(goal.color),
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${goal.currentProgress.toStringAsFixed(1)} / ${goal.target}',
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[700],
+                      fontSize: 13,
+                    ),
                   ),
-                ),
-                Text(
-                  '${progressPercentage.toStringAsFixed(0)}%',
-                  style: GoogleFonts.poppins(
-                    color: goal.color,
-                    fontWeight: FontWeight.bold,
+                  Text(
+                    '${progressPercentage.toStringAsFixed(0)}%',
+                    style: GoogleFonts.poppins(
+                      color: goal.color,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -389,161 +487,26 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    final isNarrowScreen = MediaQuery.of(context).size.width < 600;
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Header Section - Modified for View Goals
-          SliverToBoxAdapter(
-            child: FadeInDown(
-              duration: Duration(milliseconds: 500),
-              child: Container(
-                margin: EdgeInsets.all(isNarrowScreen ? 10 : 20),
-                padding: EdgeInsets.all(isNarrowScreen ? 15 : 20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.deepPurple.withOpacity(0.2),
-                      Colors.white.withOpacity(0.3),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Iconsax.chart,
-                        color: Colors.deepPurple.shade700,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'View Goals',
-                            style: GoogleFonts.poppins(
-                              fontSize: isNarrowScreen ? 16 : 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple.shade700,
-                            ),
-                          ),
-                          Text(
-                            'Track and manage your health goals',
-                            style: GoogleFonts.poppins(
-                              fontSize: isNarrowScreen ? 10 : 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+                  (context, index) => _buildGoalCard(_healthGoals[index]),
+              childCount: _healthGoals.length,
             ),
           ),
-
-          // Tab Bar Section
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SliverAppBarDelegate(
-              TabBar(
-                controller: _tabController,
-                indicatorColor: Colors.deepPurple,
-                labelColor: Colors.deepPurple,
-                unselectedLabelColor: Colors.grey,
-                tabs: [
-                  Tab(text: 'Current Goals'),
-                  Tab(text: 'Previous Goals'),
-                ],
-              ),
-            ),
-          ),
-
-          // Tab Content
-          SliverFillRemaining(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                RefreshIndicator(
-                  onRefresh: () async {
-                    await Future.delayed(const Duration(seconds: 1));
-                    setState(() {});
-                  },
-                  child: ListView(
-                    padding: const EdgeInsets.all(15),
-                    children: [
-                      TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search goals...',
-                          prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        onChanged: (value) {
-                          // Implement search functionality
-                        },
-                      ),
-                      const SizedBox(height: 15),
-                      ..._healthGoals.map(_buildGoalCard).toList(),
-                    ],
-                  ),
-                ),
-                ListView(
-                  padding: const EdgeInsets.all(15),
-                  children: [
-                    ..._previousGoals.map((goal) => _buildGoalCard(goal)).toList(),
-                  ],
-                ),
-              ],
-            ),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 80),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddGoalBottomSheet,
-        backgroundColor: Colors.deepPurple,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: kBaseColor,
+        child: const Icon(Icons.add, color: Colors.white, size: 26),
       ),
     );
-  }
-}
-
-class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar _tabBar;
-
-  _SliverAppBarDelegate(this._tabBar);
-
-  @override
-  double get minExtent => _tabBar.preferredSize.height;
-  @override
-  double get maxExtent => _tabBar.preferredSize.height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Colors.white,
-      child: _tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
   }
 }
 
@@ -564,50 +527,18 @@ enum GoalCategory {
   }
 }
 
-enum ActivityType {
-  exercise,
-  mindfulness,
-  hydration,
-  diet,
-  general;
-
-  String get displayName {
-    switch (this) {
-      case ActivityType.exercise:
-        return 'Exercise';
-      case ActivityType.mindfulness:
-        return 'Mindfulness';
-      case ActivityType.hydration:
-        return 'Hydration';
-      case ActivityType.diet:
-        return 'Diet';
-      case ActivityType.general:
-        return 'General';
-    }
-  }
-}
-
 enum GoalDuration {
   daily,
-  weekly,
   monthly;
 
   String get displayName {
     switch (this) {
       case GoalDuration.daily:
         return 'Daily';
-      case GoalDuration.weekly:
-        return 'Weekly';
       case GoalDuration.monthly:
         return 'Monthly';
     }
   }
-}
-
-enum GoalStatus {
-  inProgress,
-  completed,
-  abandoned;
 }
 
 class HealthGoal {
@@ -616,11 +547,8 @@ class HealthGoal {
   final IconData icon;
   final MaterialColor color;
   final GoalCategory category;
-  final ActivityType activityType;
   final GoalDuration duration;
-  final double? currentProgress;
-  final DateTime? completedDate;
-  final GoalStatus status;
+  final double currentProgress;
 
   HealthGoal({
     required this.title,
@@ -628,10 +556,7 @@ class HealthGoal {
     required this.icon,
     required this.color,
     required this.category,
-    required this.activityType,
     required this.duration,
-    this.currentProgress,
-    this.completedDate,
-    this.status = GoalStatus.inProgress,
+    this.currentProgress = 0,
   });
 }

@@ -83,26 +83,26 @@ class HealthGoals {
   });
 }
 
-class ProfileManagementScreen extends StatefulWidget {
+class HomeManagementScreen extends StatefulWidget {
   final AnimationController animationController;
 
-  const ProfileManagementScreen({
+  const HomeManagementScreen({
     super.key,
     required this.animationController
   });
 
   @override
-  _ProfileManagementScreenState createState() => _ProfileManagementScreenState();
+  _HomeManagementScreenState createState() => _HomeManagementScreenState();
 }
 
-class _ProfileManagementScreenState extends State<ProfileManagementScreen> {
+class _HomeManagementScreenState extends State<HomeManagementScreen> {
   late ProfileData _profileData;
 
   @override
   void initState() {
     super.initState();
     _profileData = ProfileData(
-      name: 'John Doe',
+      name: 'Mohamed Elshamry',
       age: 35,
       gender: 'Male',
       height: 175.0,

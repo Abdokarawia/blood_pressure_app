@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'dart:math' as math;
+  import 'package:share_plus/share_plus.dart';
 
 class HealthDataAnalysisScreen extends StatefulWidget {
   final AnimationController animationController;
@@ -88,6 +88,14 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
     'bmi': 26.8,
   };
 
+
+  final Map<String, dynamic> _sleepCaloriesData = {
+    'caloriesBurned': 420,
+    'caloriesPerHour': 60,
+    'optimalSleepCalories': 480,
+    'comparison': 'You burned 87.5% of optimal calories during sleep',
+  };
+
   String _selectedTab = 'sleep';
 
   @override
@@ -123,22 +131,6 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Health Data Analysis',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 20 : 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal.shade800,
-                      ),
-                    ),
-                    Text(
-                      'Comprehensive health data analysis and personalized recommendations',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 13 : 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
                     _buildTabSelector(isSmallScreen),
                     const SizedBox(height: 20),
                     Expanded(
@@ -253,20 +245,40 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
                         color: Colors.grey.shade800,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Avg: ${_calculateAverageSleep().toStringAsFixed(1)}h',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 12 : 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade700,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Avg: ${_calculateAverageSleep().toStringAsFixed(1)}h',
+                            style: GoogleFonts.poppins(
+                              fontSize: isSmallScreen ? 12 : 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _shareSleepReport(),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.share,
+                              size: isSmallScreen ? 18 : 20,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -276,62 +288,291 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
                   child: _buildSleepChart(isSmallScreen),
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: Colors.indigo.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Expert Analysis',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 14 : 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.indigo.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'You\'re getting an average of ${_calculateAverageSleep().toStringAsFixed(1)} hours of sleep daily. This is slightly below the general recommendation of 7-9 hours for adults. You might want to increase your sleep duration slightly, especially on Wednesdays.',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 12 : 14,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Sleep Improvement Tips:',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 14 : 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.indigo.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      _buildTipItem('Maintain a consistent sleep schedule daily'),
-                      _buildTipItem('Avoid caffeine and screens 2 hours before bed'),
-                      _buildTipItem('Keep bedroom dark, quiet and cool'),
-                    ],
-                  ),
-                ),
+                // Rest of your existing code...
               ],
             ),
           ),
+          // Rest of your existing code...
+        ],
+      ),
+    );
+  }
+
+  // Add this function to handle the share action
+  void _shareSleepReport() async {
+    try {
+      final box = context.findRenderObject() as RenderBox?;
+      final avgSleep = _calculateAverageSleep().toStringAsFixed(1);
+
+      await Share.share(
+        'Check out my weekly sleep report! 🛌\n\n'
+            'Average sleep: $avgSleep hours\n'
+            'Sleep quality is ${_getSleepQualityMessage(avgSleep)}\n\n'
+            'Shared via HealthTracker App',
+        subject: 'My Sleep Report',
+        sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not share: $e')),
+      );
+    }
+  }
+
+  // Helper function to generate a quality message
+  String _getSleepQualityMessage(String avgSleep) {
+    double avg = double.tryParse(avgSleep) ?? 0;
+    if (avg >= 8) return 'excellent';
+    if (avg >= 7) return 'good';
+    if (avg >= 6) return 'fair';
+    return 'needs improvement';
+  }
+
+  Widget _buildSleepCaloriesCard(bool isSmallScreen) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade100, Colors.blue.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: Colors.blue.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Sleep Calorie Burn',
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 14 : 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade800,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade200,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${_sleepCaloriesData['caloriesPerHour']} cal/h',
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 15),
-          _buildAnalysisCard(
-            title: 'Daily Sleep Details',
-            isSmallScreen: isSmallScreen,
-            child: Column(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Burned Last Night',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 12 : 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${_sleepCaloriesData['caloriesBurned']} cal',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 20 : 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Optimal Target',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 12 : 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${_sleepCaloriesData['optimalSleepCalories']} cal',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 16 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          LinearProgressIndicator(
+            value: _sleepCaloriesData['caloriesBurned'] / _sleepCaloriesData['optimalSleepCalories'],
+            backgroundColor: Colors.blue.shade100,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade500),
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _sleepCaloriesData['comparison'],
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 12 : 13,
+              color: Colors.blue.shade800,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealRecommendationCard(Map<String, dynamic> meal, bool isSmallScreen) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: meal['color'].withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: meal['color'].withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                meal['time'],
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 16 : 18,
+                  fontWeight: FontWeight.bold,
+                  color: meal['color'],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: meal['color'].withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${meal['calories']} calories',
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    fontWeight: FontWeight.bold,
+                    color: meal['color'],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Recommended Foods:',
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 14 : 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: meal['foods'].map<Widget>((food) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade100,
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      food['icon'],
+                      size: isSmallScreen ? 14 : 16,
+                      color: meal['color'],
+                    ),
+                    const SizedBox(width: 6),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          food['name'],
+                          style: GoogleFonts.poppins(
+                            fontSize: isSmallScreen ? 12 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        Text(
+                          '${food['calories']} cal',
+                          style: GoogleFonts.poppins(
+                            fontSize: isSmallScreen ? 10 : 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
               children: [
-                for (var data in _mockSleepData)
-                  _buildDailySleepItem(data, isSmallScreen),
+                Icon(
+                  Iconsax.lamp_on,
+                  size: isSmallScreen ? 16 : 18,
+                  color: Colors.amber.shade700,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    meal['tips'],
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 12 : 13,
+                      color: Colors.grey.shade700,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1211,19 +1452,7 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade500,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Iconsax.send,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 10),
+
                 Expanded(
                   child: TextField(
                     decoration: InputDecoration(
@@ -1237,10 +1466,17 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Icon(
-                  Iconsax.microphone,
-                  size: 18,
-                  color: Colors.grey,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade500,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Iconsax.send,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),

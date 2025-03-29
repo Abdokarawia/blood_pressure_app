@@ -585,19 +585,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddMedicationBottomSheet,
-        icon: const Icon(Iconsax.add_circle, color: Colors.white),
-        label: Text(
-          'Add Medication',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
 
-        backgroundColor: Colors.blue.shade700,
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,9 +616,19 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                       ),
                     ],
                   ),
-                  CircleAvatar(
-                    backgroundColor: Colors.blue.shade100,
-                    child: Icon(Iconsax.health, color: Colors.blue.shade700),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade800,
+                      borderRadius: BorderRadius.circular(20)
+                    ),
+                    child: TextButton.icon(
+                      onPressed: _showAddMedicationBottomSheet,
+                      label: Text("Add Medication", style: const TextStyle(color: Colors.white)), // Customizable text color
+                      icon: const Icon(
+                        Iconsax.add_circle,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),

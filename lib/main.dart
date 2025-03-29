@@ -22,7 +22,7 @@ Future<void> main() async {
 
   Widget widget;
 
-  runApp(MyApp(widget: OnBoardingView()));
+  runApp(MyApp(widget: TabScreen()));
 }
 
 class MyApp extends StatelessWidget {

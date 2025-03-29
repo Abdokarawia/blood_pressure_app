@@ -17,14 +17,14 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> with 
   List<Map<String, dynamic>> emergencyContacts = [
     {
       'id': '1',
-      'name': 'John Doe',
+      'name': 'Ahmad Ibrahim',
       'relation': 'Family',
       'phone': '+1 (555) 123-4567',
       'priority': 'High',
     },
     {
       'id': '2',
-      'name': 'Jane Smith',
+      'name': 'Ahmad Khaled',
       'relation': 'Emergency Contact',
       'phone': '+1 (555) 987-6543',
       'priority': 'Medium',
