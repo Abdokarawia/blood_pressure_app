@@ -5,60 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 
-void main() {
-  runApp(MyApp());
-}
 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Medication Tracker',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-      ),
-      home: MedicationTrackerHome(),
-    );
-  }
-}
-
-class MedicationTrackerHome extends StatefulWidget {
-  @override
-  _MedicationTrackerHomeState createState() => _MedicationTrackerHomeState();
-}
-
-class _MedicationTrackerHomeState extends State<MedicationTrackerHome>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    )..forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: MedicationRemindersScreen(
-          animationController: _animationController,
-        ),
-      ),
-    );
-  }
-}
 
 // Medication Model
 class Medication {
@@ -123,7 +70,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
       time: DateTime.now().add(const Duration(hours: 2)),
       selectedDays: [1, 3, 5],
       frequency: 'Weekly',
-      color: Colors.blue.withOpacity(0.2),
+      color: Colors.teal.withOpacity(0.2),
     ),
     Medication(
       id: '2',
@@ -171,7 +118,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Colors.blue.shade50, Colors.blue.shade100],
+                    colors: [Colors.teal.shade50, Colors.teal.shade100],
                   ),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(25),
@@ -193,7 +140,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                           style: GoogleFonts.poppins(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade800,
+                            color: Colors.teal.shade800,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -239,20 +186,20 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
       controller: controller,
       decoration: InputDecoration(
         labelText: labelText,
-        prefixIcon: Icon(prefixIcon, color: Colors.blue.shade700),
+        prefixIcon: Icon(prefixIcon, color: Colors.teal.shade700),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.blue.shade100),
+          borderSide: BorderSide(color: Colors.teal.shade100),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.blue.shade100),
+          borderSide: BorderSide(color: Colors.teal.shade100),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+          borderSide: BorderSide(color: Colors.teal.shade700, width: 2),
         ),
-        labelStyle: GoogleFonts.poppins(color: Colors.blue.shade700),
+        labelStyle: GoogleFonts.poppins(color: Colors.teal.shade700),
       ),
     );
   }
@@ -277,7 +224,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: backgroundColor ?? Colors.blue.shade700,
+              backgroundColor: backgroundColor ?? Colors.teal.shade700,
               foregroundColor: textColor ?? Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
@@ -319,7 +266,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
   Widget _buildTimePicker(StateSetter setModalState) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.blue.shade100),
+        border: Border.all(color: Colors.teal.shade100),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
@@ -329,7 +276,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
             child: Text(
               'Selected Time: ${DateFormat('hh:mm a').format(_selectedTime)}',
               style: GoogleFonts.poppins(
-                color: Colors.blue.shade700,
+                color: Colors.teal.shade700,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -351,7 +298,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.blue.shade100),
+        border: Border.all(color: Colors.teal.shade100),
         borderRadius: BorderRadius.circular(15),
       ),
       child: DropdownButton<String>(
@@ -361,10 +308,10 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
         underline: Container(),
         dropdownColor: Colors.white,
         style: GoogleFonts.poppins(
-          color: Colors.blue.shade700,
+          color: Colors.teal.shade700,
           fontWeight: FontWeight.w600,
         ),
-        icon: Icon(Iconsax.calendar, color: Colors.blue.shade700),
+        icon: Icon(Iconsax.calendar, color: Colors.teal.shade700),
         items:
             _frequencyOptions.map((String frequency) {
               return DropdownMenuItem<String>(
@@ -389,7 +336,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
         if (_selectedFrequency == 'Weekly')
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.blue.shade100),
+              border: Border.all(color: Colors.teal.shade100),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Column(
@@ -399,7 +346,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                   child: Text(
                     'Select Days',
                     style: GoogleFonts.poppins(
-                      color: Colors.blue.shade700,
+                      color: Colors.teal.shade700,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -420,8 +367,8 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                           }
                         });
                       },
-                      selectedColor: Colors.blue.shade100,
-                      backgroundColor: Colors.blue.shade50,
+                      selectedColor: Colors.teal.shade100,
+                      backgroundColor: Colors.teal.shade50,
                     );
                   }),
                 ),
@@ -433,7 +380,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
         if (_selectedFrequency == 'Monthly')
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.blue.shade100),
+              border: Border.all(color: Colors.teal.shade100),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Column(
@@ -443,7 +390,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                   child: Text(
                     'Select Day of Month',
                     style: GoogleFonts.poppins(
-                      color: Colors.blue.shade700,
+                      color: Colors.teal.shade700,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -459,14 +406,14 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                       _selectedMonthDay = value.toInt();
                     });
                   },
-                  activeColor: Colors.blue.shade700,
-                  inactiveColor: Colors.blue.shade100,
+                  activeColor: Colors.teal.shade700,
+                  inactiveColor: Colors.teal.shade100,
                 ),
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Text(
                     'Selected Day: $_selectedMonthDay',
-                    style: GoogleFonts.poppins(color: Colors.blue.shade500),
+                    style: GoogleFonts.poppins(color: Colors.teal.shade500),
                   ),
                 ),
               ],
@@ -519,14 +466,14 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Iconsax.health, size: 100, color: Colors.blue.shade200),
+          Icon(Iconsax.health, size: 100, color: Colors.teal.shade200),
           const SizedBox(height: 20),
           Text(
             'No Medications Added Yet',
             style: GoogleFonts.poppins(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.blue.shade700,
+              color: Colors.teal.shade700,
             ),
           ),
           const SizedBox(height: 10),
@@ -604,7 +551,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                         style: GoogleFonts.poppins(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800,
+                          color: Colors.teal.shade800,
                         ),
                       ),
                       Text(
@@ -618,12 +565,12 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade800,
+                      color: Colors.teal.shade800,
                       borderRadius: BorderRadius.circular(20)
                     ),
                     child: TextButton.icon(
                       onPressed: _showAddMedicationBottomSheet,
-                      label: Text("Add Medication", style: const TextStyle(color: Colors.white)), // Customizable text color
+                      label: Text("Add", style: const TextStyle(color: Colors.white)), // Customizable text color
                       icon: const Icon(
                         Iconsax.add_circle,
                         color: Colors.white,
@@ -671,7 +618,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                                 borderRadius: BorderRadius.circular(15),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.blue.withOpacity(0.1),
+                                    color: Colors.teal.withOpacity(0.1),
                                     blurRadius: 10,
                                     offset: const Offset(0, 5),
                                   ),
@@ -686,14 +633,14 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                                   ),
                                   child: Icon(
                                     Iconsax.health,
-                                    color: Colors.blue.shade700,
+                                    color: Colors.teal.shade700,
                                   ),
                                 ),
                                 title: Text(
                                   medication.name,
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.blue.shade800,
+                                    color: Colors.teal.shade800,
                                   ),
                                 ),
                                 subtitle: Column(
@@ -719,7 +666,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
                                   onChanged:
                                       (_) =>
                                           _toggleMedicationStatus(medication),
-                                  activeColor: Colors.blue.shade700,
+                                  activeColor: Colors.teal.shade700,
                                 ),
                               ),
                             ),

@@ -1,6 +1,7 @@
 import 'package:blood_pressure_app/Features/Profile/Presentation/Profile_view.dart';
 import 'package:blood_pressure_app/core/Utils/Shared%20Methods.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -94,9 +95,9 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
     );
 
     _screens = [
-      HomeManagementScreen(animationController: _pageTransitionController),
+      HomeView(animationController: _pageTransitionController),
       MedicationRemindersScreen(animationController: _pageTransitionController),
-      GoalRemindersScreen(animationController: _pageTransitionController),
+      GoalRemindersScreen(),
       HealthDataInputScreen(animationController: _pageTransitionController),
       HealthDataAnalysisScreen(animationController: _pageTransitionController),
       EmergencyContactsScreen(),
@@ -272,7 +273,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
                         ),
                         Spacer(),
                         IconButton(onPressed: (){
-                          navigateTo(context, EditProfileScreen(profileData: _profileData, ));
+                          navigateTo(context, ProfileScreen(profileData: _profileData, ));
                         }, icon: Icon(Iconsax.user , color: Colors.teal,))
                       ],
                     ),
@@ -334,7 +335,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildModernNavItem(0, Iconsax.home, 'Home', isExtraSmallScreen, isSmallScreen),
-              _buildModernNavItem(1, Iconsax.health, 'Meds', isExtraSmallScreen, isSmallScreen),
+              _buildModernNavItem(1, FontAwesomeIcons.pills, 'Meds', isExtraSmallScreen, isSmallScreen),
               _buildModernNavItem(2, Iconsax.activity, 'Goals', isExtraSmallScreen, isSmallScreen),
               _buildModernNavItem(3, Iconsax.chart, 'Input', isExtraSmallScreen, isSmallScreen),
               _buildModernNavItem(4, Iconsax.graph, 'Health Analysis', isExtraSmallScreen, isSmallScreen),

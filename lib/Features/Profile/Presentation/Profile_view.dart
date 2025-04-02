@@ -1,41 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
+import 'dart:math';
 
 import '../../Home/Presentation/Home_View.dart';
 
-class EditProfileScreen extends StatefulWidget {
+
+class ProfileScreen extends StatefulWidget {
   final ProfileData profileData;
 
-  const EditProfileScreen({
-    super.key,
-    required this.profileData,
-  });
+  const ProfileScreen({Key? key, required this.profileData}) : super(key: key);
 
   @override
-  _EditProfileScreenState createState() => _EditProfileScreenState();
+  _ProfileScreenState createState() => _ProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
-  late TextEditingController _nameController;
-  late TextEditingController _ageController;
-  late TextEditingController _heightController;
-  late TextEditingController _weightController;
-  late TextEditingController _heartRateController;
-  String _selectedGender = '';
-  final _formKey = GlobalKey<FormState>();
-  bool _isSaving = false;
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _nameController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _weightController = TextEditingController();
+
+  bool _editMode = false;
+  String _gender = 'Male';
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.profileData.name);
-    _ageController = TextEditingController(text: widget.profileData.age.toString());
-    _heightController = TextEditingController(text: widget.profileData.height.toString());
-    _weightController = TextEditingController(text: widget.profileData.weight.toString());
-    _heartRateController = TextEditingController(text: widget.profileData.heartRate.toString());
-    _selectedGender = widget.profileData.gender;
+    _setupControllers();
+  }
+
+  void _setupControllers() {
+    _nameController.text = widget.profileData.name;
+    _ageController.text = widget.profileData.age.toString();
+    _heightController.text = widget.profileData.height.toString();
+    _weightController.text = widget.profileData.weight.toString();
+    _gender = widget.profileData.gender;
   }
 
   @override
@@ -44,256 +44,579 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
-    _heartRateController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+  void _toggleEditMode() {
+    setState(() {
+      if (_editMode) {
+        _saveChanges();
+      }
+      _editMode = !_editMode;
+    });
+  }
 
-    setState(() => _isSaving = true);
+  void _saveChanges() {
+    widget.profileData.name = _nameController.text;
+    widget.profileData.age = int.tryParse(_ageController.text) ?? widget.profileData.age;
+    widget.profileData.height = double.tryParse(_heightController.text) ?? widget.profileData.height;
+    widget.profileData.weight = double.tryParse(_weightController.text) ?? widget.profileData.weight;
+    widget.profileData.gender = _gender;
+  }
 
-    // Simulate API call delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    final updatedProfile = ProfileData(
-      name: _nameController.text,
-      age: int.parse(_ageController.text),
-      gender: _selectedGender,
-      height: double.parse(_heightController.text),
-      weight: double.parse(_weightController.text),
-      heartRate: int.parse(_heartRateController.text),
-      bloodPressureProfile: widget.profileData.bloodPressureProfile,
-      medicalConditions: widget.profileData.medicalConditions,
-      healthGoals: widget.profileData.healthGoals,
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Iconsax.trash, color: Colors.red.shade400, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              'Delete Account',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.red.shade400),
+            ),
+          ],
+        ),
+        content: Text(
+          'This action cannot be undone. All your data will be permanently removed.',
+          style: GoogleFonts.poppins(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w500
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade400,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            ),
+            child: Text(
+                'Delete Account',
+                style: GoogleFonts.poppins(color: Colors.white)
+            ),
+          ),
+        ],
+      ),
     );
+  }
 
-    // Here you would typically save to database or state management
-    // For now we'll just navigate back
-    if (mounted) {
-      Navigator.pop(context, updatedProfile);
+  // Calculate BMI
+  double _calculateBMI() {
+    double heightInMeters = widget.profileData.height / 100;
+    return widget.profileData.weight / (heightInMeters * heightInMeters);
+  }
+
+  // Get BMI status
+  String _getBMIStatus(double bmi) {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi < 25) return 'Normal';
+    if (bmi < 30) return 'Overweight';
+    return 'Obese';
+  }
+
+  // Get BMI status color
+  Color _getBMIStatusColor(double bmi) {
+    if (bmi < 18.5) return Colors.blue.shade400;
+    if (bmi < 25) return Colors.green.shade400;
+    if (bmi < 30) return Colors.orange.shade400;
+    return Colors.red.shade400;
+  }
+
+  // Calculate ideal weight range
+  String _getIdealWeightRange() {
+    double heightInMeters = widget.profileData.height / 100;
+    double lowerIdealWeight = 18.5 * heightInMeters * heightInMeters;
+    double upperIdealWeight = 24.9 * heightInMeters * heightInMeters;
+    return '${lowerIdealWeight.toStringAsFixed(1)}-${upperIdealWeight.toStringAsFixed(1)} kg';
+  }
+
+  // Daily calorie needs (basic calculation)
+  int _calculateBasalMetabolicRate() {
+    if (_gender == 'Male') {
+      return (10 * widget.profileData.weight + 6.25 * widget.profileData.height - 5 * widget.profileData.age + 5).round();
+    } else {
+      return (10 * widget.profileData.weight + 6.25 * widget.profileData.height - 5 * widget.profileData.age - 161).round();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Get screen dimensions for responsive layout
+    final screenSize = MediaQuery.of(context).size;
+    final double bmi = _calculateBMI();
+    final String bmiStatus = _getBMIStatus(bmi);
+    final Color bmiStatusColor = _getBMIStatusColor(bmi);
+
+    // Responsive calculation for header height
+    final headerHeight = screenSize.height < 600
+        ? screenSize.height * 0.55
+        : screenSize.height < 800
+        ? screenSize.height * 0.55
+        : screenSize.height * 0.58;
+
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Edit Profile', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left_2),
-          onPressed: () => Navigator.pop(context),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Container(
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Iconsax.arrow_left, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         actions: [
-          TextButton(
-            onPressed: _isSaving ? null : _saveProfile,
-            child: _isSaving
-                ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-                : Text(
-              'SAVE',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                color: Colors.teal
-              ),
+          Container(
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(_editMode ? Iconsax.tick_circle : Iconsax.edit, color: Colors.black),
+              onPressed: _toggleEditMode,
             ),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Profile Picture Section
-              // Personal Information
-              _buildSectionTitle('Personal Information'),
-              _buildTextField(
-                controller: _nameController,
-                label: 'Full Name',
-                icon: Iconsax.user,
-                validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
-              ),
-              const SizedBox(height: 16),
-              _buildGenderSelector(),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _ageController,
-                label: 'Age',
-                icon: Iconsax.calendar,
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                value!.isEmpty || int.tryParse(value) == null ? 'Please enter a valid age' : null,
-              ),
-
-              const SizedBox(height: 30),
-
-              // Health Metrics
-              _buildSectionTitle('Health Metrics'),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _heightController,
-                      label: 'Height (cm)',
-                      icon: Iconsax.ruler,
-                      keyboardType: TextInputType.number,
-                      validator: (value) =>
-                      value!.isEmpty || double.tryParse(value) == null ? 'Enter valid height' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _weightController,
-                      label: 'Weight (kg)',
-                      icon: Iconsax.weight,
-                      keyboardType: TextInputType.number,
-                      validator: (value) =>
-                      value!.isEmpty || double.tryParse(value) == null ? 'Enter valid weight' : null,
-                    ),
+        child: Column(
+          children: [
+            Container(
+              height: headerHeight,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    Colors.teal.shade400,
+                    Colors.teal.shade700,
+                    Colors.teal.shade900,
+                  ],
+                ),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(40),
+                  bottomRight: Radius.circular(40),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.teal.shade200.withOpacity(0.5),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _heartRateController,
-                label: 'Resting Heart Rate (bpm)',
-                icon: Iconsax.heart,
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                value!.isEmpty || int.tryParse(value) == null ? 'Enter valid heart rate' : null,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+              child: SafeArea(
+                child: Center(
+                  child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Adjust avatar size based on available space
+                        final avatarSize = constraints.maxHeight < 300 ? 70.0 : 100.0;
+                        final nameFontSize = constraints.maxHeight < 300 ? 20.0 : 26.0;
+                        final subTextFontSize = constraints.maxHeight < 300 ? 14.0 : 16.0;
 
-  Widget _buildProfilePicture() {
-    return Center(
-      child: Stack(
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.teal.shade100,
-                width: 3,
-              ),
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/profile_placeholder.png',
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.teal.shade600,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 2,
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Profile avatar with glowing effect
+                            Container(
+                              height: avatarSize,
+                              width: avatarSize,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.white.withOpacity(0.2),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                _gender == 'Male' ? Iconsax.man : Iconsax.woman,
+                                size: avatarSize * 0.6,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: constraints.maxHeight * 0.05),
+                            // Name field
+                            _editMode
+                                ? Container(
+                              width: min(220, screenSize.width * 0.6),
+                              child: TextField(
+                                controller: _nameController,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: nameFontSize * 0.9,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                                decoration: InputDecoration(
+                                  hintText: 'Your Name',
+                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+                                  ),
+                                  focusedBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.white, width: 2),
+                                  ),
+                                ),
+                              ),
+                            )
+                                : Text(
+                              widget.profileData.name,
+                              style: GoogleFonts.poppins(
+                                fontSize: nameFontSize,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: constraints.maxHeight * 0.02),
+                            // Gender selector
+                            _editMode
+                                ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildGenderOption('Male', Iconsax.man),
+                                const SizedBox(width: 20),
+                                _buildGenderOption('Female', Iconsax.woman),
+                              ],
+                            )
+                                : Text(
+                              '${widget.profileData.age} years • ${widget.profileData.gender}',
+                              style: GoogleFonts.poppins(
+                                fontSize: subTextFontSize,
+                                color: Colors.white.withOpacity(0.85),
+                              ),
+                            ),
+
+                            SizedBox(height: constraints.maxHeight * 0.06),
+
+                            // Health Metrics Section - Responsive layout
+                            if (!_editMode) ...[
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: min(30, screenSize.width * 0.06)),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildHealthMetricCard('BMI', bmi.toStringAsFixed(1), bmiStatus, bmiStatusColor),
+                                    SizedBox(width: min(15, screenSize.width * 0.03)),
+                                    _buildHealthMetricCard('Calories', '${_calculateBasalMetabolicRate()}', 'BMR/day', Colors.amber),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      }
+                  ),
                 ),
               ),
-              child: const Icon(Iconsax.camera, color: Colors.white, size: 20),
+            ),
+
+            // Personal Information Card - Responsive padding
+            Container(
+              margin: EdgeInsets.only(
+                  top: 30,
+                  left: max(16, min(24, MediaQuery.of(context).size.width * 0.06)),
+                  right: max(16, min(24, MediaQuery.of(context).size.width * 0.06)),
+                  bottom: 16
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(min(24, MediaQuery.of(context).size.width * 0.05)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Iconsax.user, color: Colors.teal.shade700),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            'Personal Information',
+                            style: GoogleFonts.poppins(
+                              fontSize: min(18, MediaQuery.of(context).size.width * 0.04),
+                              fontWeight: FontWeight.w600,
+                              color: Colors.teal.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _buildInfoItem('Age', _ageController, 'years', Iconsax.calendar),
+                    _buildDivider(),
+                    _buildInfoItem('Height', _heightController, 'cm', Iconsax.ruler),
+                    _buildDivider(),
+                    _buildInfoItem('Weight', _weightController, 'kg', Iconsax.weight),
+                  ],
+                ),
+              ),
+            ),
+
+            // Delete Account Button - Responsive margin
+            Container(
+              margin: EdgeInsets.symmetric(
+                  horizontal: max(16, min(24, MediaQuery.of(context).size.width * 0.06)),
+                  vertical: 16
+              ),
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: _showDeleteAccountDialog,
+                icon: Icon(Iconsax.trash, color: Colors.red.shade400, size: 20),
+                label: Text(
+                  'Delete Account',
+                  style: GoogleFonts.poppins(
+                    color: Colors.red.shade400,
+                    fontWeight: FontWeight.w500,
+                    fontSize: min(15, MediaQuery.of(context).size.width * 0.035),
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.red.shade50,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom spacing
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHealthMetricCard(String title, String value, String subtitle, Color accentColor) {
+    // Responsive font sizes
+    final titleSize = MediaQuery.of(context).size.width < 360 ? 10.0 : 12.0;
+    final valueSize = MediaQuery.of(context).size.width < 360 ? 20.0 : 22.0;
+    final subtitleSize = MediaQuery.of(context).size.width < 360 ? 9.0 : 11.0;
+
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(
+            vertical: min(12, MediaQuery.of(context).size.height * 0.015),
+            horizontal: min(12, MediaQuery.of(context).size.width * 0.03)
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        ),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: titleSize,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+            SizedBox(height: min(4, MediaQuery.of(context).size.height * 0.005)),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: valueSize,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.only(top: min(6, MediaQuery.of(context).size.height * 0.008)),
+              padding: EdgeInsets.symmetric(
+                  horizontal: min(10, MediaQuery.of(context).size.width * 0.025),
+                  vertical: 3
+              ),
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: accentColor.withOpacity(0.3)),
+              ),
+              child: Text(
+                subtitle,
+                style: GoogleFonts.poppins(
+                  fontSize: subtitleSize,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderOption(String genderValue, IconData icon) {
+    // Responsive size adjustments
+    final double fontSize = MediaQuery.of(context).size.width < 360 ? 13.0 : 14.0;
+    final double horizontalPadding = MediaQuery.of(context).size.width < 360 ? 15.0 : 20.0;
+
+    final isSelected = _gender == genderValue;
+    return GestureDetector(
+      onTap: () => setState(() => _gender = genderValue),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isSelected ? Colors.teal.shade700 : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.teal.shade700 : Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              genderValue,
+              style: GoogleFonts.poppins(
+                color: isSelected ? Colors.teal.shade700 : Colors.white,
+                fontWeight: FontWeight.w500,
+                fontSize: fontSize,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, TextEditingController controller, String unit, IconData icon) {
+    // Responsive font sizes and width
+    final labelSize = MediaQuery.of(context).size.width < 360 ? 14.0 : 16.0;
+    final valueSize = MediaQuery.of(context).size.width < 360 ? 14.0 : 16.0;
+    final textFieldWidth = MediaQuery.of(context).size.width < 360 ? 80.0 : 100.0;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.teal.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: Colors.teal.shade700, size: 20),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: labelSize,
+            color: Colors.grey.shade800,
+          ),
+        ),
+        const Spacer(),
+        _editMode
+            ? Container(
+          width: textFieldWidth,
+          height: 40,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: valueSize,
+              color: Colors.teal.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              suffix: Text(
+                unit,
+                style: GoogleFonts.poppins(
+                    color: Colors.grey.shade600,
+                    fontSize: max(11, min(13, valueSize - 3))
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide(color: Colors.teal.shade200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide(color: Colors.teal.shade700, width: 2),
+              ),
             ),
           ),
-        ],
-      ),
+        )
+            : Text(
+          '${controller.text} $unit',
+          style: GoogleFonts.poppins(
+            fontSize: valueSize,
+            fontWeight: FontWeight.w500,
+            color: Colors.teal.shade700,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildDivider() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey[800],
-        ),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Divider(
+        color: Colors.grey.shade200,
+        thickness: 1.5,
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: GoogleFonts.poppins(),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
-        prefixIcon: Icon(icon, color: Colors.teal.shade600),
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.teal.shade600, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      ),
-      validator: validator,
-    );
-  }
-
-  Widget _buildGenderSelector() {
-    return DropdownButtonFormField<String>(
-      value: _selectedGender.isEmpty ? null : _selectedGender,
-      decoration: InputDecoration(
-        labelText: 'Gender',
-        labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
-        prefixIcon: Icon(Iconsax.profile_2user, color: Colors.teal.shade600),
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.teal.shade600, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-      ),
-      dropdownColor: Colors.white,
-      style: GoogleFonts.poppins(),
-      items: ['Male', 'Female', 'Other', 'Prefer not to say']
-          .map((gender) => DropdownMenuItem(
-        value: gender,
-        child: Text(gender),
-      ))
-          .toList(),
-      onChanged: (value) => setState(() => _selectedGender = value ?? ''),
-      validator: (value) => value == null ? 'Please select your gender' : null,
     );
   }
 }
-
