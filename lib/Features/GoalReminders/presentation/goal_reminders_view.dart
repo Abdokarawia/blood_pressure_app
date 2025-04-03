@@ -136,6 +136,20 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
+// Add this method to get default current value based on category
+  double _getDefaultCurrentValueForCategory(GoalCategory? category) {
+    if (category == null) return 0.0;
+
+    switch (category) {
+      case GoalCategory.steps: return 0; // Starting with 0 steps
+      case GoalCategory.heartRate: return 70; // Average resting heart rate
+      case GoalCategory.bloodPressure: return 120; // Systolic starting point
+      case GoalCategory.caloriesBurned: return 0; // Starting with 0 calories
+      case GoalCategory.distanceCovered: return 0; // Starting with 0 km
+      case GoalCategory.activeMinutes: return 0; // Starting with 0 minutes
+      case GoalCategory.sleepHours: return 6; // Average current sleep
+      case GoalCategory.hydration: return 0.5; }
+  }
 
   void _showAddGoalBottomSheet() {
     _goalTitleController.clear();
@@ -249,7 +263,19 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> {
                               TextField(
                                 controller: _currentValueController,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                decoration: _inputDecoration('E.g., 2500 steps', Iconsax.direct_up),
+                                readOnly: _selectedCategory != null, // Make read-only when category is selected
+                                enabled: _selectedCategory == null, // Disable when category is selected
+                                decoration: _inputDecoration(
+                                  _getDefaultCurrentValueForCategory(_selectedCategory).toString() ?? "0.0",
+                                  Iconsax.direct_up,
+                                ).copyWith(
+                                  // Add visual indication that field is read-only when category is selected
+                                  fillColor: _selectedCategory != null ? Colors.grey[200] : Colors.grey[100],
+                                  hintStyle: GoogleFonts.poppins(
+                                    color: Colors.grey[500],
+                                    fontSize: 14,
+                                  ),
+                                ),
                               ),
                             ],
                           ),

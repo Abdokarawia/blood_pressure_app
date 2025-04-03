@@ -117,7 +117,7 @@ class _HomeViewState extends State<HomeView> {
 
   // Health Analysis Data
   String _selectedTab = 'sleep';
-  final List<Map<String, dynamic>> _mockSleepData = [
+  final List<Map<String, dynamic>>  _mockSleepData = [
     {
       'date': 'Mon',
       'hours': 7.5,
@@ -227,8 +227,6 @@ class _HomeViewState extends State<HomeView> {
         .of(context)
         .size
         .width < 400;
-
-
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1763,18 +1761,7 @@ class _HomeViewState extends State<HomeView> {
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade500,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Iconsax.send,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                ),
+
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
@@ -1789,10 +1776,17 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Icon(
-                  Iconsax.microphone,
-                  size: 18,
-                  color: Colors.grey,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade500,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Iconsax.send,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),

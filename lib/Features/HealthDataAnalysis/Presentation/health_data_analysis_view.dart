@@ -296,43 +296,6 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
   }
 
 
-  Widget _buildSummaryItem(
-    String title,
-    String value,
-    Color color,
-    IconData icon,
-    bool isSmallScreen,
-  ) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: isSmallScreen ? 24 : 28, color: color),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 14 : 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade800,
-          ),
-        ),
-        Text(
-          title,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 14,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSleepAnalysis(bool isSmallScreen) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1211,44 +1174,6 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
     );
   }
 
-  Widget _buildInsights(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInsightItem(
-          Icons.trending_up,
-          'Activity Pattern',
-          'Your step count is highest on weekends. Consider maintaining this level throughout the week.',
-          Colors.teal,
-          isSmallScreen,
-        ),
-        const SizedBox(height: 12),
-        _buildInsightItem(
-          Icons.nightlight_outlined,
-          'Sleep Quality',
-          'Your deep sleep average is lower than recommended. Try going to bed earlier to improve this.',
-          Colors.indigo,
-          isSmallScreen,
-        ),
-        const SizedBox(height: 12),
-        _buildInsightItem(
-          Icons.favorite_outline,
-          'Heart Health',
-          'Your resting heart rate is within the healthy range. Keep up the good work!',
-          Colors.red,
-          isSmallScreen,
-        ),
-        const SizedBox(height: 12),
-        _buildInsightItem(
-          Icons.restaurant_outlined,
-          'Nutrition',
-          'Your protein intake is lower than recommended. Consider adding more protein to your diet.',
-          Colors.orange,
-          isSmallScreen,
-        ),
-      ],
-    );
-  }
 
   Widget _buildInsightItem(
     IconData icon,

@@ -121,19 +121,6 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
     return 'Far from goal';
   }
 
-  String _getUnitForTitle(String title) {
-    switch (title) {
-      case 'Calories Burned': return 'kcal';
-      case 'Active Minutes': return 'min';
-      case 'Heart Rate': return 'bpm';
-      case 'Hydration': return 'L';
-      case 'Weight': return 'kg';
-      case 'Weight Loss': return 'kg';
-      case 'Goal Weight Loss': return 'kg';
-      default: return '';
-    }
-  }
-
   TextEditingController _getControllerForTitle(String title) {
     switch (title) {
       case 'Calories Burned': return _caloriesBurnedController;
