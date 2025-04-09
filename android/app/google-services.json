@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "774035192078",
+    "project_id": "guardpulse-da795",
+    "storage_bucket": "guardpulse-da795.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:774035192078:android:3b71850b6cd02886e3ff5f",
+        "android_client_info": {
+          "package_name": "com.example.blood_pressure_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBNfckpu3saAqofrZkRnw6B-ovBy8RvdQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

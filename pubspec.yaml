@@ -78,6 +78,7 @@ dependencies:
   dio: ^5.8.0+1
   percent_indicator: ^4.2.4
   share_plus: ^10.1.4
+  google_sign_in: ^6.3.0
 
 
 dev_dependencies:
