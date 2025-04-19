@@ -82,8 +82,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   _showSuccessSnackBar(context, "Login successful! Welcome back.");
 
                   // Add a slight delay before navigation for better UX
-                  Future.delayed(const Duration(milliseconds: 800), () {
-                    navigateAndFinished(context, const TabScreen());
+                  Future.delayed( Duration(milliseconds: 800), () {
+                    navigateAndFinished(context,  TabScreen(uid: state.user.uid!,));
                   });
                 } else if (state is AuthenticationError) {
                   _showErrorSnackBar(context, state.message);

@@ -112,7 +112,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
           child: BlocConsumer<AuthenticationCubit, AuthenticationState>(
             listener: (context, state) {
               if (state is AuthenticationSuccess) {
-                navigateAndFinished(context, const TabScreen());
+                navigateAndFinished(context,  TabScreen(uid: state.user.uid!,));
               } else if (state is AuthenticationError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

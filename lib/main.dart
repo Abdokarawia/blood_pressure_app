@@ -9,6 +9,7 @@ import 'Core/Utils/App Colors.dart';
 
 import 'Features/Authentication/Presentation/View/forgot_password_view.dart';
 import 'Features/Authentication/Presentation/View/onboarding_view.dart';
+import 'Features/GoalReminders/presentation/Manger/health_goals_cubit.dart';
 import 'bloc_observer.dart';
 import 'firebase_options.dart';
 
@@ -37,26 +38,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        title: 'Flutter Demo',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          scaffoldBackgroundColor: AppColorsData.white,
-          platform: TargetPlatform.iOS,
-          primaryColor: AppColorsData.primaryColor,
-          canvasColor: Colors.transparent,
-          fontFamily: "Urbanist",
-          iconTheme: const IconThemeData(
-              color: AppColorsData.primaryColor, size: 25),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: AppColorsData.white,
-            toolbarHeight: 50,
-            elevation: 0,
-            surfaceTintColor: AppColorsData.white,
-            centerTitle: true,
+    return BlocProvider<HealthGoalsCubit>(
+      create: (context) => HealthGoalsCubit(),
+      child: MaterialApp(
+          title: 'Flutter Demo',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            scaffoldBackgroundColor: AppColorsData.white,
+            platform: TargetPlatform.iOS,
+            primaryColor: AppColorsData.primaryColor,
+            canvasColor: Colors.transparent,
+            fontFamily: "Urbanist",
+            iconTheme: const IconThemeData(
+                color: AppColorsData.primaryColor, size: 25),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: AppColorsData.white,
+              toolbarHeight: 50,
+              elevation: 0,
+              surfaceTintColor: AppColorsData.white,
+              centerTitle: true,
+            ),
           ),
-        ),
-        home: widget
+          home: widget
+      ),
     );
   }
 }

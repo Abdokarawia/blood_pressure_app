@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../manger/health_records_cubit.dart';
+import '../manger/health_records_state.dart';
+
 
 class HealthDataInputScreen extends StatefulWidget {
+  final String userId;
   final AnimationController animationController;
 
-  const HealthDataInputScreen({Key? key, required this.animationController})
+  const HealthDataInputScreen({Key? key, required this.animationController, required this.userId})
       : super(key: key);
 
   @override
@@ -15,27 +20,8 @@ class HealthDataInputScreen extends StatefulWidget {
 
 class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
 
-  // Form field controllers
-  final TextEditingController _caloriesBurnedController = TextEditingController();
-  final TextEditingController _activeMinutesController = TextEditingController();
-  final TextEditingController _heartRateController = TextEditingController();
-  final TextEditingController _hydrationController = TextEditingController();
-  final TextEditingController _weightController = TextEditingController();
-  final TextEditingController _goalWeightLossController = TextEditingController();
-
-  final Map<String, double> _defaults = {
-    'Calories Burned': 0,
-    'Active Minutes': 0,
-    'Heart Rate': 72,
-    'Hydration': 0,
-    'Weight': 70,
-    'Weight Loss': 0,
-    'Goal Weight Loss': 0,
-  };
-
-  Map<String, double> _goals = {
+  final Map<String, double> _goals = {
     'Calories Burned': 2000, // Default daily calorie goal
     'Active Minutes': 30,
     'Heart Rate': 120, // Moderate intensity default
@@ -48,57 +34,20 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
   @override
   void initState() {
     super.initState();
-    _caloriesBurnedController.text = _defaults['Calories Burned']!.toInt().toString();
-    _activeMinutesController.text = _defaults['Active Minutes']!.toInt().toString();
-    _heartRateController.text = _defaults['Heart Rate']!.toInt().toString();
-    _hydrationController.text = _defaults['Hydration']!.toStringAsFixed(1);
-    _weightController.text = _defaults['Weight']!.toStringAsFixed(1);
-    _goalWeightLossController.text = _goals['Goal Weight Loss']!.toStringAsFixed(1);
-  }
-
-  @override
-  void dispose() {
-    _caloriesBurnedController.dispose();
-    _activeMinutesController.dispose();
-    _heartRateController.dispose();
-    _hydrationController.dispose();
-    _weightController.dispose();
-    _goalWeightLossController.dispose();
-    super.dispose();
+    // Load last health data when screen initializes
+    context.read<HealthDataCubit>().loadLastHealthData(widget.userId);
   }
 
   double _calculateGoalCaloricDeficit() {
-    double goalWeightToLose = double.tryParse(_goalWeightLossController.text) ?? 0;
+    double goalWeightToLose = double.tryParse(
+        context.read<HealthDataCubit>().goalWeightLossController.text) ??
+        0;
     return 7700 * goalWeightToLose;
   }
 
-  void _saveData() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 1200));
-      setState(() => _isLoading = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 10),
-              Text('Health data saved successfully'),
-            ],
-          ),
-          backgroundColor: Colors.teal.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          margin: const EdgeInsets.all(10),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
   Color _getProgressColor(String title) {
-    final currentValue = double.tryParse(_getControllerForTitle(title).text) ?? 0;
+    final controller = _getControllerForTitle(title);
+    final currentValue = double.tryParse(controller.text) ?? 0;
     final goalValue = _goals[title] ?? 1;
     if (goalValue == 0) return Colors.grey;
     final percentage = (currentValue / goalValue * 100).clamp(0, 100);
@@ -110,7 +59,8 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
   }
 
   String _getProgressStatus(String title) {
-    final currentValue = double.tryParse(_getControllerForTitle(title).text) ?? 0;
+    final controller = _getControllerForTitle(title);
+    final currentValue = double.tryParse(controller.text) ?? 0;
     final goalValue = _goals[title] ?? 1;
     if (goalValue == 0) return 'No goal set';
     final percentage = (currentValue / goalValue * 100).clamp(0, 100);
@@ -122,15 +72,33 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
   }
 
   TextEditingController _getControllerForTitle(String title) {
+    final cubit = context.read<HealthDataCubit>();
     switch (title) {
-      case 'Calories Burned': return _caloriesBurnedController;
-      case 'Active Minutes': return _activeMinutesController;
-      case 'Heart Rate': return _heartRateController;
-      case 'Hydration': return _hydrationController;
-      case 'Weight': return _weightController;
-      case 'Goal Weight Loss': return _goalWeightLossController;
-      default: return TextEditingController();
+      case 'Calories Burned':
+        return cubit.caloriesBurnedController;
+      case 'Active Minutes':
+        return cubit.activeMinutesController;
+      case 'Heart Rate':
+        return cubit.heartRateController;
+      case 'Hydration':
+        return cubit.hydrationController;
+      case 'Weight':
+        return cubit.weightController;
+      case 'Goal Weight Loss':
+        return cubit.goalWeightLossController;
+      default:
+        return TextEditingController();
     }
+  }
+
+  String? _validateNumber(String? value, String fieldName) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter $fieldName';
+    }
+    if (double.tryParse(value) == null) {
+      return 'Please enter a valid number';
+    }
+    return null;
   }
 
   @override
@@ -162,100 +130,143 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
             child: Scaffold(
               backgroundColor: Colors.grey.shade50,
               body: SafeArea(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: ListView(
-                          padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
-                          children: [
-                            _buildSectionTitle('Activity'),
-                            _buildHealthDataCard(
-                              context: context,
-                              title: 'Calories Burned',
-                              subTitle: 'Daily calories burned',
-                              icon: Iconsax.flash_1,
-                              color: Colors.orange,
-                              controller: _caloriesBurnedController,
-                              hint: 'Calories burned',
-                              keyboardType: TextInputType.number,
-                              validator: (value) => _validateNumber(value, 'calories burned'),
-                              suffix: 'kcal',
-                            ),
-                            const SizedBox(height: 16),
-                            _buildHealthDataCard(
-                              context: context,
-                              title: 'Active Minutes',
-                              subTitle: 'Exercise duration',
-                              icon: Iconsax.timer_1,
-                              color: Colors.teal,
-                              controller: _activeMinutesController,
-                              hint: 'Active minutes',
-                              keyboardType: TextInputType.number,
-                              validator: (value) => _validateNumber(value, 'active minutes'),
-                              suffix: 'min',
-                            ),
-                            const SizedBox(height: 24),
-                            _buildSectionTitle('Vitals'),
-                            _buildHealthDataCard(
-                              context: context,
-                              title: 'Heart Rate',
-                              subTitle: 'Current heart rate',
-                              icon: Iconsax.heart,
-                              color: Colors.red,
-                              controller: _heartRateController,
-                              hint: 'Heart rate',
-                              keyboardType: TextInputType.number,
-                              validator: (value) => _validateNumber(value, 'heart rate'),
-                              suffix: 'bpm',
-                            ),
-                            const SizedBox(height: 16),
-                            _buildHealthDataCard(
-                              context: context,
-                              title: 'Weight',
-                              subTitle: 'Current body weight',
-                              icon: Iconsax.weight,
-                              color: Colors.teal.shade700,
-                              controller: _weightController,
-                              hint: 'Body weight',
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              validator: (value) => _validateNumber(value, 'weight'),
-                              suffix: 'kg',
-                            ),
-                            const SizedBox(height: 16),
-                            _buildHealthDataCard(
-                              context: context,
-                              title: 'Goal Weight Loss',
-                              subTitle: 'Target deficit: ${_calculateGoalCaloricDeficit().toStringAsFixed(0)} kcal',
-                              icon: Iconsax.weight,
-                              color: Colors.deepPurple.shade700,
-                              controller: _goalWeightLossController,
-                              hint: 'Target weight to lose',
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              validator: (value) => _validateNumber(value, 'goal weight loss'),
-                              suffix: 'kg',
-                            ),
-                            const SizedBox(height: 24),
-                            _buildSectionTitle('Nutrition'),
-                            _buildHealthDataCard(
-                              context: context,
-                              title: 'Hydration',
-                              subTitle: 'Water consumed',
-                              icon: Iconsax.drop,
-                              color: Colors.blue,
-                              controller: _hydrationController,
-                              hint: 'Water consumed',
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              validator: (value) => _validateNumber(value, 'water intake'),
-                              suffix: 'liters',
-                            ),
-                          ],
+                child: BlocConsumer<HealthDataCubit, HealthDataState>(
+                  listener: (context, state) {
+                    if (state is HealthDataError) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.white),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(state.message)),
+                            ],
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          margin: const EdgeInsets.all(10),
+                          duration: const Duration(seconds: 3),
                         ),
+                      );
+                    } else if (state is HealthDataSaved) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.white),
+                              const SizedBox(width: 10),
+                              Text(state.message),
+                            ],
+                          ),
+                          backgroundColor: Colors.teal.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          margin: const EdgeInsets.all(10),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  builder: (context, state) {
+                    return Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ListView(
+                              padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+                              children: [
+                                _buildSectionTitle('Activity'),
+                                _buildHealthDataCard(
+                                  context: context,
+                                  title: 'Calories Burned',
+                                  subTitle: 'Daily calories burned',
+                                  icon: Iconsax.flash_1,
+                                  color: Colors.orange,
+                                  controller: context.read<HealthDataCubit>().caloriesBurnedController,
+                                  hint: 'Calories burned',
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) => _validateNumber(value, 'calories burned'),
+                                  suffix: 'kcal',
+                                ),
+                                const SizedBox(height: 16),
+                                _buildHealthDataCard(
+                                  context: context,
+                                  title: 'Active Minutes',
+                                  subTitle: 'Exercise duration',
+                                  icon: Iconsax.timer_1,
+                                  color: Colors.teal,
+                                  controller: context.read<HealthDataCubit>().activeMinutesController,
+                                  hint: 'Active minutes',
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) => _validateNumber(value, 'active minutes'),
+                                  suffix: 'min',
+                                ),
+                                const SizedBox(height: 24),
+                                _buildSectionTitle('Vitals'),
+                                _buildHealthDataCard(
+                                  context: context,
+                                  title: 'Heart Rate',
+                                  subTitle: 'Current heart rate',
+                                  icon: Iconsax.heart,
+                                  color: Colors.red,
+                                  controller: context.read<HealthDataCubit>().heartRateController,
+                                  hint: 'Heart rate',
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) => _validateNumber(value, 'heart rate'),
+                                  suffix: 'bpm',
+                                ),
+                                const SizedBox(height: 16),
+                                _buildHealthDataCard(
+                                  context: context,
+                                  title: 'Weight',
+                                  subTitle: 'Current body weight',
+                                  icon: Iconsax.weight,
+                                  color: Colors.teal.shade700,
+                                  controller: context.read<HealthDataCubit>().weightController,
+                                  hint: 'Body weight',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  validator: (value) => _validateNumber(value, 'weight'),
+                                  suffix: 'kg',
+                                ),
+                                const SizedBox(height: 16),
+                                _buildHealthDataCard(
+                                  context: context,
+                                  title: 'Goal Weight Loss',
+                                  subTitle: 'Target deficit: ${_calculateGoalCaloricDeficit().toStringAsFixed(0)} kcal',
+                                  icon: Iconsax.weight,
+                                  color: Colors.deepPurple.shade700,
+                                  controller: context.read<HealthDataCubit>().goalWeightLossController,
+                                  hint: 'Target weight to lose',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  validator: (value) => _validateNumber(value, 'goal weight loss'),
+                                  suffix: 'kg',
+                                ),
+                                const SizedBox(height: 24),
+                                _buildSectionTitle('Nutrition'),
+                                _buildHealthDataCard(
+                                  context: context,
+                                  title: 'Hydration',
+                                  subTitle: 'Water consumed',
+                                  icon: Iconsax.drop,
+                                  color: Colors.blue,
+                                  controller: context.read<HealthDataCubit>().hydrationController,
+                                  hint: 'Water consumed',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  validator: (value) => _validateNumber(value, 'water intake'),
+                                  suffix: 'liters',
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildSaveButton(isSmallScreen, state),
+                        ],
                       ),
-                      _buildSaveButton(isSmallScreen),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -418,7 +429,9 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
     );
   }
 
-  Widget _buildSaveButton(bool isSmallScreen) {
+  Widget _buildSaveButton(bool isSmallScreen, HealthDataState state) {
+    final isLoading = state is HealthDataSaving || state is HealthDataLoading;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(
@@ -426,7 +439,13 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
         vertical: 16.0,
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _saveData,
+        onPressed: isLoading
+            ? null
+            : () {
+          if (_formKey.currentState!.validate()) {
+            context.read<HealthDataCubit>().saveHealthData(widget.userId);
+          }
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.teal.shade700,
           foregroundColor: Colors.white,
@@ -435,7 +454,7 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
           padding: const EdgeInsets.symmetric(vertical: 16),
           minimumSize: const Size(double.infinity, 56),
         ),
-        child: _isLoading
+        child: isLoading
             ? const SizedBox(
           height: 24,
           width: 24,
@@ -457,15 +476,5 @@ class _HealthDataInputScreenState extends State<HealthDataInputScreen> {
         ),
       ),
     );
-  }
-
-  String? _validateNumber(String? value, String fieldName) {
-    if (value == null || value.isEmpty) {
-      return 'Please enter $fieldName';
-    }
-    if (double.tryParse(value) == null) {
-      return 'Please enter a valid number';
-    }
-    return null;
   }
 }

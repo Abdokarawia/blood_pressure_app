@@ -1,49 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
+import '../Data/medication_model.dart';
+import 'Manger/medication_reminders_cubit.dart';
+import 'Manger/medication_reminders_state.dart';
 
-
-
-// Medication Model
-class Medication {
-  final String id;
-  final String name;
-  final String dosage;
-  final DateTime time;
-  final List<int> selectedDays;
-  bool isActive;
-  final String frequency;
-  final Color color;
-
-  Medication({
-    required this.id,
-    required this.name,
-    required this.dosage,
-    required this.time,
-    this.selectedDays = const [0, 1, 2, 3, 4, 5, 6],
-    this.isActive = true,
-    this.frequency = 'Daily',
-    Color? color,
-  }) : color = color ?? _generateRandomPastelColor();
-
-  static Color _generateRandomPastelColor() {
-    return Color.fromRGBO(
-      200 + (DateTime.now().millisecondsSinceEpoch % 55),
-      200 + (DateTime.now().millisecondsSinceEpoch % 55),
-      200 + (DateTime.now().millisecondsSinceEpoch % 55),
-      0.5,
-    );
-  }
-}
 
 class MedicationRemindersScreen extends StatefulWidget {
-  final AnimationController animationController;
+  final AnimationController? animationController;
 
-  const MedicationRemindersScreen({Key? key, required this.animationController})
-    : super(key: key);
+  const MedicationRemindersScreen({Key? key, this.animationController})
+      : super(key: key);
 
   @override
   _MedicationRemindersScreenState createState() =>
@@ -62,118 +32,104 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
 
   final List<String> _frequencyOptions = ['Daily', 'Weekly', 'Monthly'];
 
-  List<Medication> medications = [
-    Medication(
-      id: '1',
-      name: 'Aspirin',
-      dosage: '100mg',
-      time: DateTime.now().add(const Duration(hours: 2)),
-      selectedDays: [1, 3, 5],
-      frequency: 'Weekly',
-      color: Colors.teal.withOpacity(0.2),
-    ),
-    Medication(
-      id: '2',
-      name: 'Vitamin D',
-      dosage: '1000 IU',
-      time: DateTime.now().add(const Duration(hours: 4)),
-      color: Colors.green.withOpacity(0.2),
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
-    _listAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    )..forward();
+    _listAnimationController = widget.animationController ??
+        AnimationController(
+          duration: const Duration(milliseconds: 500),
+          vsync: this,
+        )..forward();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _dosageController.dispose();
-    _listAnimationController.dispose();
+    if (widget.animationController == null) {
+      _listAnimationController.dispose();
+    }
     super.dispose();
   }
 
-  void _showAddMedicationBottomSheet() {
+  void _showAddMedicationBottomSheet(BuildContext parentContext) {
     _selectedTime = DateTime.now();
     _selectedDays = [0, 1, 2, 3, 4, 5, 6];
     _selectedFrequency = 'Daily';
     _selectedMonthDay = 1;
 
     showModalBottomSheet(
-      context: context,
+      context: parentContext,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      builder:
-          (context) => StatefulBuilder(
-            builder: (context, setModalState) {
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Colors.teal.shade50, Colors.teal.shade100],
-                  ),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(25),
+      builder: (context) => BlocProvider.value(
+        value: parentContext.read<MedicationCubit>(),
+        child: StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.teal.shade50, Colors.teal.shade100],
+                ),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(25),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                  top: 20,
+                  left: 20,
+                  right: 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Add New Medication',
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal.shade800,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildResponsiveTextField(
+                        controller: _nameController,
+                        labelText: 'Medication Name',
+                        prefixIcon: Iconsax.document_text,
+                      ),
+                      const SizedBox(height: 15),
+                      _buildResponsiveTextField(
+                        controller: _dosageController,
+                        labelText: 'Dosage',
+                        prefixIcon: Iconsax.document_text,
+                      ),
+                      const SizedBox(height: 15),
+                      _buildTimePicker(setModalState),
+                      const SizedBox(height: 15),
+                      _buildFrequencyDropdown(setModalState),
+                      const SizedBox(height: 15),
+                      _buildDaySelector(setModalState),
+                      const SizedBox(height: 20),
+                      _buildResponsiveButton(
+                        text: 'Add Medication',
+                        onPressed: () => _addMedication(context),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                    top: 20,
-                    left: 20,
-                    right: 20,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Add New Medication',
-                          style: GoogleFonts.poppins(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal.shade800,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _buildResponsiveTextField(
-                          controller: _nameController,
-                          labelText: 'Medication Name',
-                          prefixIcon: Iconsax.document_text,
-                        ),
-                        const SizedBox(height: 15),
-                        _buildResponsiveTextField(
-                          controller: _dosageController,
-                          labelText: 'Dosage',
-                          prefixIcon: Iconsax.document_text,
-                        ),
-                        const SizedBox(height: 15),
-                        _buildTimePicker(setModalState),
-                        const SizedBox(height: 15),
-                        _buildFrequencyDropdown(setModalState),
-                        const SizedBox(height: 15),
-                        _buildDaySelector(setModalState),
-                        const SizedBox(height: 20),
-                        _buildResponsiveButton(
-                          text: 'Add Medication',
-                          onPressed: _addMedication,
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -233,30 +189,29 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
               elevation: 3,
             ),
             onPressed: isLoading ? null : onPressed,
-            child:
-                isLoading
-                    ? CircularProgressIndicator(
-                      color: textColor ?? Colors.white,
-                      strokeWidth: 2,
-                    )
-                    : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (icon != null)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: Icon(icon, size: fontSize + 4),
-                          ),
-                        Text(
-                          text,
-                          style: GoogleFonts.poppins(
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
+            child: isLoading
+                ? CircularProgressIndicator(
+              color: textColor ?? Colors.white,
+              strokeWidth: 2,
+            )
+                : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: Icon(icon, size: fontSize + 4),
+                  ),
+                Text(
+                  text,
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -303,7 +258,6 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
       ),
       child: DropdownButton<String>(
         value: _selectedFrequency,
-
         isExpanded: true,
         underline: Container(),
         dropdownColor: Colors.white,
@@ -312,13 +266,12 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
           fontWeight: FontWeight.w600,
         ),
         icon: Icon(Iconsax.calendar, color: Colors.teal.shade700),
-        items:
-            _frequencyOptions.map((String frequency) {
-              return DropdownMenuItem<String>(
-                value: frequency,
-                child: Text(frequency),
-              );
-            }).toList(),
+        items: _frequencyOptions.map((String frequency) {
+          return DropdownMenuItem<String>(
+            value: frequency,
+            child: Text(frequency),
+          );
+        }).toList(),
         onChanged: (String? newValue) {
           setModalState(() {
             _selectedFrequency = newValue!;
@@ -376,7 +329,6 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
               ],
             ),
           ),
-
         if (_selectedFrequency == 'Monthly')
           Container(
             decoration: BoxDecoration(
@@ -423,7 +375,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
     );
   }
 
-  void _addMedication() {
+  void _addMedication(BuildContext context) {
     if (_nameController.text.isNotEmpty && _dosageController.text.isNotEmpty) {
       List<int> finalSelectedDays;
 
@@ -433,7 +385,7 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
           break;
         case 'Weekly':
           finalSelectedDays =
-              _selectedDays.isEmpty ? [0, 1, 2, 3, 4, 5, 6] : _selectedDays;
+          _selectedDays.isEmpty ? [0, 1, 2, 3, 4, 5, 6] : _selectedDays;
           break;
         case 'Monthly':
           finalSelectedDays = [_selectedMonthDay - 1];
@@ -442,21 +394,17 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
           finalSelectedDays = [0, 1, 2, 3, 4, 5, 6];
       }
 
-      final newMedication = Medication(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      context.read<MedicationCubit>().addMedication(
         name: _nameController.text,
         dosage: _dosageController.text,
         time: _selectedTime,
         selectedDays: finalSelectedDays,
         frequency: _selectedFrequency,
+        colorHex: Colors.teal.shade200.value.toRadixString(16).padLeft(8, '0'),
       );
 
-      setState(() {
-        medications.add(newMedication);
-        _nameController.clear();
-        _dosageController.clear();
-      });
-
+      _nameController.clear();
+      _dosageController.clear();
       Navigator.pop(context);
     }
   }
@@ -494,19 +442,14 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
     switch (medication.frequency) {
       case 'Daily':
         return 'Daily at ${DateFormat('hh:mm a').format(medication.time)}';
-
       case 'Weekly':
         final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        final selectedDayNames = medication.selectedDays
-            .map((day) => days[day])
-            .toList()
-            .join(', ');
+        final selectedDayNames =
+        medication.selectedDays.map((day) => days[day]).toList().join(', ');
         return 'Weekly on $selectedDayNames at ${DateFormat('hh:mm a').format(medication.time)}';
-
       case 'Monthly':
         final day = medication.selectedDays.first + 1;
         return 'Monthly on the $day${_getDaySuffix(day)} at ${DateFormat('hh:mm a').format(medication.time)}';
-
       default:
         return 'Unspecified Schedule';
     }
@@ -530,159 +473,212 @@ class _MedicationRemindersScreenState extends State<MedicationRemindersScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return BlocProvider(
+      create: (context) => MedicationCubit(),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        body: SafeArea(
+          child: Builder(
+            builder: (context) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Medication Tracker',
-                        style: GoogleFonts.poppins(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal.shade800,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Medication Tracker',
+                            style: GoogleFonts.poppins(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal.shade800,
+                            ),
+                          ),
+                          Text(
+                            'Keep track of your health',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Keep track of your health',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.grey.shade600,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade800,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: TextButton.icon(
+                          onPressed: () => _showAddMedicationBottomSheet(context),
+                          label: const Text(
+                            "Add",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          icon: const Icon(
+                            Iconsax.add_circle,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.teal.shade800,
-                      borderRadius: BorderRadius.circular(20)
-                    ),
-                    child: TextButton.icon(
-                      onPressed: _showAddMedicationBottomSheet,
-                      label: Text("Add", style: const TextStyle(color: Colors.white)), // Customizable text color
-                      icon: const Icon(
-                        Iconsax.add_circle,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Medication List
-            Expanded(
-              child:
-                  medications.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: medications.length,
-                        itemBuilder: (context, index) {
-                          final medication = medications[index];
-                          return AnimatedBuilder(
-                            animation: _listAnimationController,
-                            builder: (context, child) {
-                              return FadeTransition(
-                                opacity: Tween<double>(
-                                  begin: 0,
-                                  end: 1,
-                                ).animate(
-                                  CurvedAnimation(
-                                    parent: _listAnimationController,
-                                    curve: Interval(
-                                      index * 0.1,
-                                      1.0,
-                                      curve: Curves.easeOut,
-                                    ),
-                                  ),
-                                ),
-                                child: child,
-                              );
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(15),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.teal.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: ListTile(
-                                leading: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: medication.color,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Iconsax.health,
-                                    color: Colors.teal.shade700,
-                                  ),
-                                ),
-                                title: Text(
-                                  medication.name,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.teal.shade800,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${medication.dosage} • ${DateFormat('hh:mm a').format(medication.time)}',
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatMedicationSchedule(medication),
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                trailing: Switch(
-                                  value: medication.isActive,
-                                  onChanged:
-                                      (_) =>
-                                          _toggleMedicationStatus(medication),
-                                  activeColor: Colors.teal.shade700,
-                                ),
-                              ),
+                ),
+                Expanded(
+                  child: BlocListener<MedicationCubit, MedicationState>(
+                    listener: (context, state) {
+                      if (state is MedicationSuccess) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(state.message),
+                            backgroundColor: Colors.teal.shade700,
+                          ),
+                        );
+                      } else if (state is MedicationError) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(state.message),
+                            backgroundColor: Colors.red.shade400,
+                          ),
+                        );
+                      }
+                    },
+                    child: BlocBuilder<MedicationCubit, MedicationState>(
+                      builder: (context, state) {
+                        if (state is MedicationLoading) {
+                          return const Center(child: CircularProgressIndicator());
+                        } else if (state is MedicationEmpty) {
+                          return _buildEmptyState();
+                        } else if (state is MedicationError) {
+                          return Center(
+                            child: Text(
+                              state.message,
+                              style: GoogleFonts.poppins(color: Colors.red),
                             ),
                           );
-                        },
-                      ),
+                        } else if (state is MedicationLoaded) {
+                          final medications = state.medications;
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: medications.length,
+                            itemBuilder: (context, index) {
+                              final medication = medications[index];
+                              return AnimatedBuilder(
+                                animation: _listAnimationController,
+                                builder: (context, child) {
+                                  return FadeTransition(
+                                    opacity: Tween<double>(begin: 0, end: 1)
+                                        .animate(
+                                      CurvedAnimation(
+                                        parent: _listAnimationController,
+                                        curve: Interval(
+                                          index * 0.1,
+                                          1.0,
+                                          curve: Curves.easeOut,
+                                        ),
+                                      ),
+                                    ),
+                                    child: child,
+                                  );
+                                },
+                                child: Container(
+                                  margin:
+                                  const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(15),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.teal.withOpacity(0.1),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 5),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ListTile(
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Color(
+                                          int.parse(
+                                            medication.colorHex,
+                                            radix: 16,
+                                          ),
+                                        ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Iconsax.health,
+                                        color: Colors.teal.shade700,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      medication.name,
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.teal.shade800,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${medication.dosage} • ${DateFormat('hh:mm a').format(medication.time)}',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatMedicationSchedule(medication),
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Switch(
+                                          value: medication.isActive,
+                                          onChanged: (_) => context
+                                              .read<MedicationCubit>()
+                                              .toggleMedicationStatus(
+                                              medication),
+                                          activeColor: Colors.teal.shade700,
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            Iconsax.trash,
+                                            color: Colors.red.shade400,
+                                          ),
+                                          onPressed: () => context
+                                              .read<MedicationCubit>()
+                                              .deleteMedication(medication.id),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }
+                        return _buildEmptyState();
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
-  }
-
-  void _toggleMedicationStatus(Medication medication) {
-    setState(() {
-      medication.isActive = !medication.isActive;
-    });
   }
 }
