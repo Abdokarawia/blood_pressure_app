@@ -1,94 +1,19 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:dio/dio.dart';
 import 'package:share_plus/share_plus.dart';
 
-class ProfileData {
-  String name;
-  int age;
-  String gender;
-  double height;
-  double weight;
-  int heartRate;
-  double bmi;
-
-  // Blood Pressure Profile
-  BloodPressureProfile bloodPressureProfile;
-
-  // Medical Conditions
-  List<String> medicalConditions;
-
-  // Health Goals
-  HealthGoals healthGoals;
-
-  ProfileData({
-    this.name = '',
-    this.age = 0,
-    this.gender = '',
-    this.height = 0.0,
-    this.weight = 0.0,
-    this.heartRate = 0,
-    double? bmi,
-    BloodPressureProfile? bloodPressureProfile,
-    List<String>? medicalConditions,
-    HealthGoals? healthGoals,
-  }) :
-        bmi = bmi ?? _calculateBMI(height, weight),
-        bloodPressureProfile = bloodPressureProfile ?? BloodPressureProfile(),
-        medicalConditions = medicalConditions ?? [],
-        healthGoals = healthGoals ?? HealthGoals();
-
-  static double _calculateBMI(double height, double weight) {
-    return weight / ((height / 100) * (height / 100));
-  }
-}
-
-class BloodPressureProfile {
-  int systolic;
-  int diastolic;
-  DateTime lastMeasured;
-  List<BloodPressureReading> historicalReadings;
-
-  BloodPressureProfile({
-    this.systolic = 120,
-    this.diastolic = 80,
-    DateTime? lastMeasured,
-    List<BloodPressureReading>? historicalReadings,
-  }) :
-        lastMeasured = lastMeasured ?? DateTime.now(),
-        historicalReadings = historicalReadings ?? [];
-}
-
-class BloodPressureReading {
-  DateTime date;
-  int systolic;
-  int diastolic;
-
-  BloodPressureReading({
-    required this.date,
-    required this.systolic,
-    required this.diastolic,
-  });
-}
-
-class HealthGoals {
-  double weightGoal;
-  int dailyStepGoal;
-  int sleepHoursGoal;
-
-  HealthGoals({
-    this.weightGoal = 0.0,
-    this.dailyStepGoal = 10000,
-    this.sleepHoursGoal = 8,
-  });
-}
+import 'health_chat_view.dart';
 
 class HomeView extends StatefulWidget {
   final AnimationController animationController;
+  Map<String, dynamic> userStats;
 
-  const HomeView({
+   HomeView({
     super.key,
+    required this.userStats,
     required this.animationController,
   });
 
@@ -97,27 +22,16 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
-  // Profile Data
-  final Map<String, dynamic> _profileData = {
-    'name': 'Mohamed Elshamry',
-    'age': 35,
-    'gender': 'Male',
-    'height': 175.0,
-    'weight': 70.0,
-    'heartRate': 72,
-    'bmi': 22.9,
-    'bloodPressure': {'systolic': 120, 'diastolic': 80},
-    'medicalConditions': ['Mild Hypertension', 'Seasonal Allergies'],
-    'healthGoals': {
-      'weightGoal': 68.0,
-      'dailyStepGoal': 12000,
-      'sleepHoursGoal': 8,
-    },
-  };
+
+  // API related variables
+  final Dio _dio = Dio();
+  bool _isLoading = false;
+  String? _errorMessage;
+  Map<String, dynamic>? _weightLossPlanApiData;
 
   // Health Analysis Data
   String _selectedTab = 'sleep';
-  final List<Map<String, dynamic>>  _mockSleepData = [
+  final List<Map<String, dynamic>> _mockSleepData = [
     {
       'date': 'Mon',
       'hours': 7.5,
@@ -139,34 +53,6 @@ class _HomeViewState extends State<HomeView> {
       'deepSleep': 2.5,
       'lightSleep': 4.3,
     },
-    {
-      'date': 'Thu',
-      'hours': 7.2,
-      'quality': 'Good',
-      'deepSleep': 3.0,
-      'lightSleep': 4.2,
-    },
-    {
-      'date': 'Fri',
-      'hours': 8.5,
-      'quality': 'Excellent',
-      'deepSleep': 4.0,
-      'lightSleep': 4.5,
-    },
-    {
-      'date': 'Sat',
-      'hours': 7.8,
-      'quality': 'Good',
-      'deepSleep': 3.3,
-      'lightSleep': 4.5,
-    },
-    {
-      'date': 'Sun',
-      'hours': 7.0,
-      'quality': 'Good',
-      'deepSleep': 3.0,
-      'lightSleep': 4.0,
-    },
   ];
 
   final Map<String, dynamic> _weightLossPlan = {
@@ -180,14 +66,6 @@ class _HomeViewState extends State<HomeView> {
     'estimatedWeeks': 8,
   };
 
-  final Map<String, dynamic> _userStats = {
-    'height': 175,
-    'weight': 82,
-    'age': 35,
-    'gender': 'Male',
-    'bmr': 1755,
-    'bmi': 26.8,
-  };
 
   final List<Map<String, dynamic>> _sleepMealRecommendations = [
     {
@@ -222,38 +100,91 @@ class _HomeViewState extends State<HomeView> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    if (_selectedTab == 'weight') {
+      fetchWeightLossPlan();
+    }
+  }
+
+  // Calculate average sleep hours
+  double _calculateAverageSleep() {
+    double totalHours = 0;
+    for (var day in _mockSleepData) {
+      totalHours += day['hours'] as double;
+    }
+    return totalHours / _mockSleepData.length;
+  }
+
+  // Update your existing fetchWeightLossPlan function:
+  Future<void> fetchWeightLossPlan() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Get the API URL from Firebase Firestore
+      final DocumentSnapshot docSnapshot =
+          await FirebaseFirestore.instance
+              .collection('AI_LINK')
+              .doc('ee7PKmGZq3xe5PRJEqq2')
+              .get();
+
+      if (!docSnapshot.exists) {
+        throw Exception('API endpoint document not found in Firestore');
+      }
+
+      final data = docSnapshot.data() as Map<String, dynamic>;
+      final String apiUrl = data['link'] ?? '';
+
+      if (apiUrl.isEmpty) {
+        throw Exception('API URL not found in the document');
+      }
+
+      // Now use the retrieved URL for the API call
+      final response = await _dio.post(
+        "$apiUrl/weight-loss-plan",
+        data: {
+          "current_weight_kg": widget.userStats['weight'],
+          "sleep_hours": _calculateAverageSleep(),
+          "weight_loss_required":
+          widget.userStats['weight'] - 10,
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      setState(() {
+        _isLoading = false;
+        _weightLossPlanApiData = response.data;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        if (e is DioException) {
+          _errorMessage = e.response?.statusMessage ?? 'Network error occurred';
+        } else {
+          _errorMessage = e.toString();
+        }
+      });
+      print('Error fetching weight loss plan: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isSmallScreen = MediaQuery
-        .of(context)
-        .size
-        .width < 400;
+    final isSmallScreen = MediaQuery.of(context).size.width < 400;
+    print(widget.userStats);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Profile Header
-          SliverToBoxAdapter(
-            child: AnimatedBuilder(
-              animation: widget.animationController,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: widget.animationController.value,
-                  child: Transform.translate(
-                    offset: Offset(
-                        0, 30 * (1 - widget.animationController.value)),
-                    child: _buildProfileHeader(isSmallScreen),
-                  ),
-                );
-              },
-            ),
-          ),
-
           // Health Analysis Section
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+              padding: EdgeInsets.all(isSmallScreen ? 20.0 : 30.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -269,74 +200,10 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildProfileHeader(bool isSmallScreen) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.teal.withOpacity(0.2),
-            const Color(0xFFE0F2F1).withOpacity(0.3),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withOpacity(0.1),
-            blurRadius: 15,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.teal.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Iconsax.profile_2user,
-              color: Colors.teal.shade700,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _profileData['name'],
-                  style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal.shade700,
-                  ),
-                ),
-                Text(
-                  '${_profileData['age']} years old • ${_profileData['gender']}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // Health Analysis Components
   Widget _buildTabSelector(bool isSmallScreen) {
     return Container(
-      height: isSmallScreen ? 50 : 60,
+      height: isSmallScreen ? 70 : 65,
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(20),
@@ -353,8 +220,12 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildTabButton(String tabId, String title, IconData icon,
-      bool isSmallScreen) {
+  Widget _buildTabButton(
+    String tabId,
+    String title,
+    IconData icon,
+    bool isSmallScreen,
+  ) {
     final isSelected = _selectedTab == tabId;
 
     return GestureDetector(
@@ -362,11 +233,16 @@ class _HomeViewState extends State<HomeView> {
         setState(() {
           _selectedTab = tabId;
         });
+
+        // Fetch data when weight tab is selected
+        if (tabId == 'weight' && _weightLossPlanApiData == null) {
+          fetchWeightLossPlan();
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: EdgeInsets.symmetric(
-          horizontal: isSmallScreen ? 10 : 16,
+          horizontal: isSmallScreen ? 15 : 20,
           vertical: 8,
         ),
         decoration: BoxDecoration(
@@ -397,9 +273,6 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-
-
-
   Widget _buildSelectedTabContent(bool isSmallScreen) {
     switch (_selectedTab) {
       case 'sleep':
@@ -409,7 +282,12 @@ class _HomeViewState extends State<HomeView> {
       case 'bmi':
         return _buildBMICalculatorTab(isSmallScreen);
       case 'chat':
-        return _buildAIChatTab(isSmallScreen);
+        return // In Home_View.dart
+        SizedBox(
+          height:
+              MediaQuery.of(context).size.height * 0.6, // or a specific height
+          child: HealthAIChatScreen(),
+        );
       default:
         return _buildSleepAnalysisTab(isSmallScreen);
     }
@@ -427,40 +305,7 @@ class _HomeViewState extends State<HomeView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Weekly Sleep Quality',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 14 : 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade800,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Avg: ${_calculateAverageSleep().toStringAsFixed(1)}h',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 12 : 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: isSmallScreen ? 150 : 180,
-                  child: _buildSleepChart(isSmallScreen),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 5),
                 _buildSleepCaloriesCard(isSmallScreen),
                 const SizedBox(height: 20),
                 Container(
@@ -502,8 +347,12 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ),
                       const SizedBox(height: 5),
-                      _buildTipItem('Maintain a consistent sleep schedule daily'),
-                      _buildTipItem('Avoid caffeine and screens 2 hours before bed'),
+                      _buildTipItem(
+                        'Maintain a consistent sleep schedule daily',
+                      ),
+                      _buildTipItem(
+                        'Avoid caffeine and screens 2 hours before bed',
+                      ),
                       _buildTipItem('Keep bedroom dark, quiet and cool'),
                     ],
                   ),
@@ -532,16 +381,562 @@ class _HomeViewState extends State<HomeView> {
               ],
             ),
           ),
-          const SizedBox(height: 15),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightLossPlanTab(bool isSmallScreen) {
+    return _isLoading
+        ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.teal.shade500),
+              const SizedBox(height: 20),
+              Text(
+                'Fetching your personalized weight loss plan...',
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 14 : 16,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        )
+        : _errorMessage != null
+        ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Iconsax.warning_2, size: 50, color: Colors.red.shade400),
+              const SizedBox(height: 20),
+              Text(
+                'Error: $_errorMessage',
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 14 : 16,
+                  color: Colors.red.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: fetchWeightLossPlan,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal.shade500,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  'Try Again',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        )
+        : _weightLossPlanApiData != null
+        ? _buildApiWeightLossPlan(isSmallScreen)
+        : _buildLocalWeightLossPlan(isSmallScreen);
+  }
+
+  Widget _buildApiWeightLossPlan(bool isSmallScreen) {
+    final eatPlan = _weightLossPlanApiData!['Eat Plan'];
+    final sleepData = _weightLossPlanApiData!['Sleep'];
+    final macros = _weightLossPlanApiData!['macronutrients'];
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           _buildAnalysisCard(
-            title: 'Daily Sleep Details',
+            title: 'Your Weight Loss Plan',
             isSmallScreen: isSmallScreen,
+            showShareIcon: true,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (var data in _mockSleepData)
-                  _buildDailySleepItem(data, isSmallScreen),
+                Text(
+                  'API-Generated Personalized Plan',
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.teal.shade700,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Daily Macronutrients',
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal.shade800,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildMacroCircle(
+                            'Proteins',
+                            macros['Protein'],
+                            Colors.red.shade400,
+                            isSmallScreen,
+                          ),
+                          _buildMacroCircle(
+                            'Carbs',
+                            macros['Carbs'],
+                            Colors.blue.shade400,
+                            isSmallScreen,
+                          ),
+                          _buildMacroCircle(
+                            'Fats',
+                            macros['fats'],
+                            Colors.amber.shade600,
+                            isSmallScreen,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
+          ),
+          const SizedBox(height: 15),
+          _buildAnalysisCard(
+            title: 'Daily Meal Plan',
+            isSmallScreen: isSmallScreen,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMealSection(
+                  'Breakfast',
+                  eatPlan['breakfast'],
+                  Colors.amber.shade100,
+                  Colors.amber.shade700,
+                  isSmallScreen,
+                ),
+                const SizedBox(height: 15),
+                _buildMealSection(
+                  'Lunch',
+                  eatPlan['lunch'],
+                  Colors.teal.shade100,
+                  Colors.teal.shade700,
+                  isSmallScreen,
+                ),
+                const SizedBox(height: 15),
+                _buildMealSection(
+                  'Dinner',
+                  eatPlan['dinner'],
+                  Colors.purple.shade100,
+                  Colors.purple.shade700,
+                  isSmallScreen,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 15),
+          _buildAnalysisCard(
+            title: 'Sleep & Weight Loss',
+            isSmallScreen: isSmallScreen,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Sleep Calorie Burn',
+                      style: GoogleFonts.poppins(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.indigo.shade700,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        sleepData['Sleep Calorie burn'],
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  sleepData['Comment'],
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 13 : 15,
+                    color: Colors.grey.shade800,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  'Sleep Tips:',
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.indigo.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (var tip in sleepData['Tips']) _buildTipItem(tip),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealSection(
+    String mealTitle,
+    Map<String, dynamic> mealData,
+    Color bgColor,
+    Color textColor,
+    bool isSmallScreen,
+  ) {
+    final dishes = mealData['dishes'] as Map<String, dynamic>;
+
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildHeaderText(mealTitle, textColor, isSmallScreen),
+              _buildCaloriesBadge(
+                mealData['total calories'].toString(),
+                textColor,
+                isSmallScreen,
+              ),
+            ],
+          ),
+
+          // Always Show Dishes
+          if (dishes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            for (var dish in dishes.entries)
+              _buildDishItem(dish, textColor, isSmallScreen),
+          ],
+
+          // Optional Summary Text (if needed)
+          if (dishes.isEmpty)
+            _buildSummaryText(dishes.length, textColor, isSmallScreen),
+        ],
+      ),
+    );
+  }
+
+  // Helper Method: Build Header Text
+  Widget _buildHeaderText(String text, Color textColor, bool isSmallScreen) {
+    return Text(
+      text,
+      style: GoogleFonts.poppins(
+        fontSize: isSmallScreen ? 16 : 18,
+        fontWeight: FontWeight.bold,
+        color: textColor,
+      ),
+    );
+  }
+
+  // Helper Method: Build Calories Badge
+  Widget _buildCaloriesBadge(
+    String calories,
+    Color textColor,
+    bool isSmallScreen,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$calories cal',
+        style: GoogleFonts.poppins(
+          fontSize: isSmallScreen ? 12 : 14,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMacroCircle(
+    String title,
+    String value,
+    Color color,
+    bool isSmallScreen,
+  ) {
+    return Column(
+      children: [
+        // Animated Container for Macro Circle
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: _getMacroCircleSize(isSmallScreen),
+          height: _getMacroCircleSize(isSmallScreen),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.2),
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Center(
+            child: _buildMacroValueText(value, color, isSmallScreen),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildMacroTitleText(title, isSmallScreen),
+      ],
+    );
+  }
+
+  // Helper Method: Get Macro Circle Size
+  double _getMacroCircleSize(bool isSmallScreen) {
+    return isSmallScreen ? 70 : 80;
+  }
+
+  // Helper Method: Build Macro Value Text
+  Widget _buildMacroValueText(String value, Color color, bool isSmallScreen) {
+    return Text(
+      value,
+      style: GoogleFonts.poppins(
+        fontSize: isSmallScreen ? 16 : 18,
+        fontWeight: FontWeight.bold,
+        color: color,
+      ),
+    );
+  }
+
+  // Helper Method: Build Macro Title Text
+  Widget _buildMacroTitleText(String title, bool isSmallScreen) {
+    return Text(
+      title,
+      style: GoogleFonts.poppins(
+        fontSize: isSmallScreen ? 12 : 14,
+        color: Colors.grey.shade800,
+      ),
+    );
+  }
+
+  // Helper Method: Build Dish Item
+  Widget _buildDishItem(
+    MapEntry<String, dynamic> dish,
+    Color textColor,
+    bool isSmallScreen,
+  ) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 6.0 : 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Dish Name with Icon
+          Expanded(
+            child: Row(
+              children: [
+                Icon(Iconsax.cake, size: 14, color: textColor.withOpacity(0.8)),
+                SizedBox(width: isSmallScreen ? 6 : 8),
+                Flexible(
+                  child: Text(
+                    dish.value['name'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: textColor.withOpacity(0.8),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Dish Calories
+          Text(
+            '${dish.value['calories']} cal',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper Method: Build Summary Text
+  Widget _buildSummaryText(int itemCount, Color textColor, bool isSmallScreen) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        '$itemCount items - Tap to expand',
+        style: GoogleFonts.poppins(
+          fontSize: isSmallScreen ? 12 : 13,
+          color: textColor.withOpacity(0.7),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocalWeightLossPlan(bool isSmallScreen) {
+    // Fallback to local data if API data is not available
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildAnalysisCard(
+            title: 'Weight Loss Plan',
+            isSmallScreen: isSmallScreen,
+            showShareIcon: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Default Weight Loss Plan',
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 12 : 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWeightInfoCard(
+                      'Current',
+                      _weightLossPlan['currentWeight'].toString(),
+                      'kg',
+                      Colors.blue,
+                      isSmallScreen,
+                    ),
+                    Icon(Iconsax.arrow_right_3, color: Colors.grey.shade400),
+                    _buildWeightInfoCard(
+                      'Target',
+                      _weightLossPlan['targetWeight'].toString(),
+                      'kg',
+                      Colors.green,
+                      isSmallScreen,
+                    ),
+                    Icon(Iconsax.arrow_right_3, color: Colors.grey.shade400),
+                    _buildWeightInfoCard(
+                      'Time',
+                      _weightLossPlan['estimatedWeeks'].toString(),
+                      'weeks',
+                      Colors.purple,
+                      isSmallScreen,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: fetchWeightLossPlan,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade500,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: Text(
+                    'Get Personalized Plan',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: isSmallScreen ? 14 : 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightInfoCard(
+    String title,
+    String value,
+    String unit,
+    MaterialColor color,
+    bool isSmallScreen,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.shade200, width: 1),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: isSmallScreen ? 12 : 14,
+              color: color.shade700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 18 : 20,
+                  fontWeight: FontWeight.bold,
+                  color: color.shade700,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                unit,
+                style: GoogleFonts.poppins(
+                  fontSize: isSmallScreen ? 12 : 14,
+                  color: color.shade700,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -558,10 +953,7 @@ class _HomeViewState extends State<HomeView> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.blue.shade200,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.blue.shade200, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -578,7 +970,10 @@ class _HomeViewState extends State<HomeView> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade200,
                   borderRadius: BorderRadius.circular(10),
@@ -644,7 +1039,9 @@ class _HomeViewState extends State<HomeView> {
           ),
           const SizedBox(height: 15),
           LinearProgressIndicator(
-            value: _sleepCaloriesData['caloriesBurned'] / _sleepCaloriesData['optimalSleepCalories'],
+            value:
+                _sleepCaloriesData['caloriesBurned'] /
+                _sleepCaloriesData['optimalSleepCalories'],
             backgroundColor: Colors.blue.shade100,
             valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade500),
             minHeight: 10,
@@ -664,508 +1061,227 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildMealRecommendationCard(Map<String, dynamic> meal, bool isSmallScreen) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: meal['color'].withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: meal['color'].withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
+  Widget _buildTipItem(String tip) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                meal['time'],
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 16 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: meal['color'],
-                ),
+          Icon(Iconsax.tick_circle, size: 16, color: Colors.teal.shade600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              tip,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: Colors.grey.shade700,
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: meal['color'].withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${meal['calories']} calories',
-                  style: GoogleFonts.poppins(
-                    fontSize: isSmallScreen ? 12 : 14,
-                    fontWeight: FontWeight.bold,
-                    color: meal['color'],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Recommended Foods:',
-            style: GoogleFonts.poppins(
-              fontSize: isSmallScreen ? 14 : 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
             ),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: meal['foods'].map<Widget>((food) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.shade100,
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealRecommendationCard(
+    Map<String, dynamic> meal,
+    bool isSmallScreen,
+  ) {
+    // State variable for expansion
+    bool isExpanded = false;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 15),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: meal['color'].withOpacity(0.1),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: meal['color'].withOpacity(0.3), width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row with time and expand/collapse functionality
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: meal['color'].withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      food['icon'],
-                      size: isSmallScreen ? 14 : 16,
+                    child: Icon(
+                      Iconsax.clock,
                       color: meal['color'],
+                      size: isSmallScreen ? 16 : 18,
                     ),
-                    const SizedBox(width: 6),
-                    Column(
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          food['name'],
+                          meal['time'],
                           style: GoogleFonts.poppins(
-                            fontSize: isSmallScreen ? 12 : 14,
-                            fontWeight: FontWeight.w500,
+                            fontSize: isSmallScreen ? 14 : 16,
+                            fontWeight: FontWeight.bold,
                             color: Colors.grey.shade800,
                           ),
                         ),
                         Text(
-                          '${food['calories']} cal',
+                          '${meal['calories']} calories',
                           style: GoogleFonts.poppins(
-                            fontSize: isSmallScreen ? 10 : 12,
+                            fontSize: isSmallScreen ? 12 : 13,
                             color: Colors.grey.shade600,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.7),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Iconsax.lamp_on,
-                  size: isSmallScreen ? 16 : 18,
-                  color: Colors.amber.shade700,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    meal['tips'],
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 12 : 13,
-                      color: Colors.grey.shade700,
-                      fontStyle: FontStyle.italic,
-                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSleepChart(bool isSmallScreen) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: _mockSleepData.map((data) {
-        final double heightFactor = data['hours'] / 10;
-        Color barColor;
-
-        switch (data['quality']) {
-          case 'Excellent':
-            barColor = Colors.green;
-            break;
-          case 'Good':
-            barColor = Colors.blue;
-            break;
-          case 'Average':
-            barColor = Colors.orange;
-            break;
-          default:
-            barColor = Colors.red;
-        }
-
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: isSmallScreen ? 8 : 12,
-                  height: (isSmallScreen ? 100 : 120) * heightFactor,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade200,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(4),
-                      topRight: Radius.circular(4),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  width: isSmallScreen ? 8 : 12,
-                  height: (isSmallScreen ? 100 : 120) * data['deepSleep'] / 10,
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.shade600,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(4),
-                      topRight: Radius.circular(4),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: isSmallScreen ? 30 : 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: barColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              data['date'],
-              style: GoogleFonts.poppins(
-                fontSize: isSmallScreen ? 10 : 12,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildDailySleepItem(Map<String, dynamic> data, bool isSmallScreen) {
-    Color qualityColor;
-
-    switch (data['quality']) {
-      case 'Excellent':
-        qualityColor = Colors.green;
-        break;
-      case 'Good':
-        qualityColor = Colors.blue;
-        break;
-      case 'Average':
-        qualityColor = Colors.orange;
-        break;
-      default:
-        qualityColor = Colors.red;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(isSmallScreen ? 10 : 15),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: qualityColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  data['quality'],
-                  style: GoogleFonts.poppins(
-                    color: qualityColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: isSmallScreen ? 12 : 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    data['date'],
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 14 : 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '${data['hours']}h',
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 14 : 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
+                  // Expand/collapse button
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        isExpanded = !isExpanded;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: meal['color'].withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        size: isSmallScreen ? 16 : 18,
+                        color: meal['color'],
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 5),
-              Text(
-                'Deep: ${data['deepSleep']}h | Light: ${data['lightSleep']}h',
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 12 : 14,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildWeightLossPlanTab(bool isSmallScreen) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildAnalysisCard(
-            title: 'Weight Loss Plan',
-            isSmallScreen: isSmallScreen,
-            showShareIcon: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(isSmallScreen ? 15 : 20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.blue.shade400,
-                        Colors.teal.shade400,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Recommended Plan',
-                            style: GoogleFonts.poppins(
-                              fontSize: isSmallScreen ? 16 : 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+              // Show food items only when expanded
+              if (isExpanded) ...[
+                const SizedBox(height: 12),
+                for (var food in meal['foods'])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              food['icon'],
+                              size: isSmallScreen ? 16 : 18,
+                              color: meal['color'],
                             ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Text(
-                              '${_weightLossPlan['estimatedWeeks']} weeks',
+                            const SizedBox(width: 8),
+                            Text(
+                              food['name'],
                               style: GoogleFonts.poppins(
-                                fontSize: isSmallScreen ? 12 : 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                fontSize: isSmallScreen ? 13 : 14,
+                                color: Colors.grey.shade700,
                               ),
                             ),
+                          ],
+                        ),
+                        Text(
+                          '${food['calories']} cal',
+                          style: GoogleFonts.poppins(
+                            fontSize: isSmallScreen ? 12 : 13,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade600,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildWeightProgressItem(
-                            'Current',
-                            '${_weightLossPlan['currentWeight']}kg',
-                            Colors.blue.shade300,
-                            isSmallScreen,
-                          ),
-                          Container(
-                            width: isSmallScreen ? 40 : 60,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                          _buildWeightProgressItem(
-                            'Target',
-                            '${_weightLossPlan['targetWeight']}kg',
-                            Colors.green.shade300,
-                            isSmallScreen,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Daily Recommendations',
-                  style: GoogleFonts.poppins(
-                    fontSize: isSmallScreen ? 16 : 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                _buildNutritionRecommendations(isSmallScreen),
-                const SizedBox(height: 20),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: Colors.amber.withOpacity(0.3),
-                      width: 1,
+                        ),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Success Tips:',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 14 : 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber.shade800,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildTipItem('Eat smaller, more frequent meals'),
-                      _buildTipItem('Drink plenty of water before meals'),
-                      _buildTipItem('Exercise ${_weightLossPlan['weeklyExercise']} times weekly for 30 mins'),
-                      _buildTipItem('Avoid eating after 8 PM'),
-                    ],
+                const SizedBox(height: 8),
+                Text(
+                  meal['tips'],
+                  style: GoogleFonts.poppins(
+                    fontSize: isSmallScreen ? 12 : 13,
+                    fontStyle: FontStyle.italic,
+                    color: meal['color'],
                   ),
                 ),
               ],
-            ),
+
+              // Summary text when collapsed
+              if (!isExpanded)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Contains ${meal['foods'].length} items',
+                    style: GoogleFonts.poppins(
+                      fontSize: isSmallScreen ? 12 : 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildWeightProgressItem(String label, String value, Color color, bool isSmallScreen) {
-    return Column(
+  Widget _buildSleepPhase(
+    String phase,
+    double hours,
+    Color color,
+    bool isSmallScreen,
+  ) {
+    return Row(
       children: [
         Container(
-          padding: EdgeInsets.all(isSmallScreen ? 10 : 15),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Container(
-            padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontSize: isSmallScreen ? 12 : 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(width: 5),
         Text(
-          label,
+          '$phase: $hours hrs',
           style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 14,
-            color: Colors.white,
+            fontSize: isSmallScreen ? 12 : 13,
+            color: Colors.grey.shade600,
           ),
         ),
       ],
     );
   }
 
-
   Future<void> _shareContent(String title) async {
     String shareText = 'Check out my $title from Health App\n\n';
 
     if (title == 'Weekly Sleep Report') {
-      shareText += 'Average Sleep: ${_calculateAverageSleep().toStringAsFixed(1)} hours\n';
-      shareText += 'Sleep Quality: ${_mockSleepData.map((e) => '${e['date']}: ${e['hours']}h (${e['quality']})').join('\n')}';
+      shareText +=
+          'Average Sleep: ${_calculateAverageSleep().toStringAsFixed(1)} hours\n';
+      shareText +=
+          'Sleep Quality: ${_mockSleepData.map((e) => '${e['date']}: ${e['hours']}h (${e['quality']})').join('\n')}';
     } else if (title == 'Weight Loss Plan') {
       shareText += 'Current Weight: ${_weightLossPlan['currentWeight']}kg\n';
       shareText += 'Target Weight: ${_weightLossPlan['targetWeight']}kg\n';
       shareText += 'Estimated Time: ${_weightLossPlan['estimatedWeeks']} weeks';
     } else if (title == 'Body Mass Index') {
-      shareText += 'BMI: ${_userStats['bmi']}\n';
-      shareText += 'Category: ${_getBMICategory(_userStats['bmi'])['name']}\n';
-      shareText += 'Weight: ${_userStats['weight']}kg\n';
-      shareText += 'Height: ${_userStats['height']}cm';
+      shareText += 'BMI: ${widget.userStats['bmi']}\n';
+      shareText += 'Category: ${_getBMICategory(widget.userStats['bmi'])['name']}\n';
+      shareText += 'Weight: ${widget.userStats['weight']}kg\n';
+      shareText += 'Height: ${widget.userStats['height']}cm';
     } else if (title == 'Sleep-Friendly Meal Plan') {
       shareText += 'Meal Recommendations:\n';
       for (var meal in _sleepMealRecommendations) {
         shareText += '${meal['time']} (${meal['calories']} cal):\n';
-        shareText += meal['foods'].map((food) => ' - ${food['name']} (${food['calories']} cal)').join('\n');
+        shareText += meal['foods']
+            .map((food) => ' - ${food['name']} (${food['calories']} cal)')
+            .join('\n');
         shareText += '\nTips: ${meal['tips']}\n\n';
       }
     }
@@ -1232,84 +1348,8 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildNutritionRecommendations(bool isSmallScreen) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildNutrientItem(
-          'Protein',
-          '${_weightLossPlan['proteinPercentage']}%',
-          Colors.red.shade400,
-          isSmallScreen,
-        ),
-        _buildNutrientItem(
-          'Carbs',
-          '${_weightLossPlan['carbsPercentage']}%',
-          Colors.amber.shade400,
-          isSmallScreen,
-        ),
-        _buildNutrientItem(
-          'Fats',
-          '${_weightLossPlan['fatsPercentage']}%',
-          Colors.blue.shade400,
-          isSmallScreen,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNutrientItem(String name, String percentage, Color color, bool isSmallScreen) {
-    return Column(
-      children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            SizedBox(
-              width: isSmallScreen ? 60 : 80,
-              height: isSmallScreen ? 60 : 80,
-              child: CircularProgressIndicator(
-                value: double.parse(percentage.replaceAll('%', '')) / 100,
-                strokeWidth: 8,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-            Column(
-              children: [
-                Text(
-                  percentage,
-                  style: GoogleFonts.poppins(
-                    fontSize: isSmallScreen ? 14 : 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          name,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-        Text(
-          '${(double.parse(percentage.replaceAll('%', '')) * _weightLossPlan['dailyCalories'] / 100).round()} cal',
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 10 : 12,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBMICalculatorTab(bool isSmallScreen) {
-    final bmiCategory = _getBMICategory(_userStats['bmi']);
+    final bmiCategory = _getBMICategory(widget.userStats['bmi']);
 
     return SingleChildScrollView(
       child: Column(
@@ -1349,7 +1389,7 @@ class _HomeViewState extends State<HomeView> {
                       ),
                       const SizedBox(height: 15),
                       Text(
-                        _userStats['bmi'].toString(),
+                        widget.userStats['bmi'].toString(),
                         textAlign: TextAlign.center,
                         style: GoogleFonts.poppins(
                           fontSize: isSmallScreen ? 32 : 40,
@@ -1441,7 +1481,7 @@ class _HomeViewState extends State<HomeView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Recommended Daily Calories: ${_userStats['bmr']} cal',
+                        'Recommended Daily Calories: ${widget.userStats['bmr']} cal',
                         style: GoogleFonts.poppins(
                           fontSize: isSmallScreen ? 14 : 16,
                           fontWeight: FontWeight.bold,
@@ -1476,24 +1516,46 @@ class _HomeViewState extends State<HomeView> {
       mainAxisSpacing: 15,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        _buildStatItem('Age', '${_userStats['age']} years', Icons.calendar_today, isSmallScreen),
-        _buildStatItem('Height', '${_userStats['height']} cm', Iconsax.ruler, isSmallScreen),
-        _buildStatItem('Weight', '${_userStats['weight']} kg', Iconsax.weight, isSmallScreen),
-        _buildStatItem('Gender', _userStats['gender'], Iconsax.user, isSmallScreen),
+        _buildStatItem(
+          'Age',
+          '${widget.userStats['age']} years',
+          Icons.calendar_today,
+          isSmallScreen,
+        ),
+        _buildStatItem(
+          'Height',
+          '${widget.userStats['height']} cm',
+          Iconsax.ruler,
+          isSmallScreen,
+        ),
+        _buildStatItem(
+          'Weight',
+          '${widget.userStats['weight']} kg',
+          Iconsax.weight,
+          isSmallScreen,
+        ),
+        _buildStatItem(
+          'Gender',
+          widget.userStats['gender'],
+          Iconsax.user,
+          isSmallScreen,
+        ),
       ],
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, bool isSmallScreen) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    bool isSmallScreen,
+  ) {
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -1544,10 +1606,7 @@ class _HomeViewState extends State<HomeView> {
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1581,9 +1640,12 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ),
                     ),
-                    if (_userStats['bmi'] >= 15 && _userStats['bmi'] <= 40)
+                    if (widget.userStats['bmi'] >= 15 && widget.userStats['bmi'] <= 40)
                       Positioned(
-                        left: ((_userStats['bmi'] - 15) / 25) * MediaQuery.of(context).size.width * 0.7,
+                        left:
+                            ((widget.userStats['bmi'] - 15) / 25) *
+                            MediaQuery.of(context).size.width *
+                            0.7,
                         child: Container(
                           width: 3,
                           height: 40,
@@ -1682,219 +1744,37 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildAIChatTab(bool isSmallScreen) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(isSmallScreen ? 15 : 20),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Iconsax.message_question,
-                    size: isSmallScreen ? 30 : 40,
-                    color: Colors.teal.shade700,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Health AI Assistant',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: isSmallScreen ? 18 : 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal.shade800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Ask any health or lifestyle questions and get personalized answers',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: isSmallScreen ? 12 : 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 30),
-                _buildSampleQuestion('How can I improve my sleep quality?', isSmallScreen),
-                const SizedBox(height: 10),
-                _buildSampleQuestion('What are the best exercises for weight loss?', isSmallScreen),
-                const SizedBox(height: 10),
-                _buildSampleQuestion('What foods are high in protein?', isSmallScreen),
-              ],
-            ),
-          ),
-          const SizedBox(height: 15),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.shade200,
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Type your question here...',
-                      hintStyle: GoogleFonts.poppins(
-                        color: Colors.grey.shade400,
-                        fontSize: isSmallScreen ? 12 : 14,
-                      ),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade500,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Iconsax.send,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSampleQuestion(String question, bool isSmallScreen) {
-    return GestureDetector(
-      onTap: () {
-        // Handle question tap
-      },
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(
-          horizontal: isSmallScreen ? 15 : 20,
-          vertical: isSmallScreen ? 10 : 12,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.grey.shade200,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          question,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 14,
-            color: Colors.grey.shade700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTipItem(String tip) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 5),
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: Colors.teal.shade500,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              tip,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Map<String, dynamic> _getBMICategory(double bmi) {
     if (bmi < 18.5) {
       return {
         'name': 'Underweight',
-        'description': 'Your BMI is below the normal range. You may need to gain some weight to reach a healthy level.',
+        'description':
+            'Your BMI is below the normal range. You may need to gain some weight to reach a healthy level.',
       };
     } else if (bmi >= 18.5 && bmi < 25) {
       return {
         'name': 'Normal weight',
-        'description': 'Your BMI is within the normal range. Keep up your healthy lifestyle.',
+        'description':
+            'Your BMI is within the normal range. Keep up your healthy lifestyle.',
       };
     } else if (bmi >= 25 && bmi < 30) {
       return {
         'name': 'Overweight',
-        'description': 'Your BMI is slightly above the normal range. You may want to lose some weight to reach a healthy level.',
+        'description':
+            'Your BMI is slightly above the normal range. You may want to lose some weight to reach a healthy level.',
       };
     } else if (bmi >= 30 && bmi < 35) {
       return {
         'name': 'Obese (Class 1)',
-        'description': 'Your BMI indicates Class 1 obesity. Gradual weight loss through healthy diet and exercise is recommended.',
+        'description':
+            'Your BMI indicates Class 1 obesity. Gradual weight loss through healthy diet and exercise is recommended.',
       };
     } else {
       return {
         'name': 'Severe Obesity',
-        'description': 'Your BMI is very high. Consider consulting a nutritionist or doctor to develop a weight loss plan.',
+        'description':
+            'Your BMI is very high. Consider consulting a nutritionist or doctor to develop a weight loss plan.',
       };
     }
   }
-
-  double _calculateAverageSleep() {
-    double totalHours = 0;
-    for (var data in _mockSleepData) {
-      totalHours += data['hours'];
-    }
-    return totalHours / _mockSleepData.length;
-  }
-
-
-
-
-
 }

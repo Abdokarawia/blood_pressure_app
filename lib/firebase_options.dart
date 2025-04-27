@@ -47,29 +47,29 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCZ2pU8EsdKJ5qIlJsFRppk5YavP-mH5EY',
-    appId: '1:774035192078:web:939bcc45a974d066e3ff5f',
-    messagingSenderId: '774035192078',
-    projectId: 'guardpulse-da795',
-    authDomain: 'guardpulse-da795.firebaseapp.com',
-    storageBucket: 'guardpulse-da795.firebasestorage.app',
-    measurementId: 'G-XJEZ1EW3EM',
+    apiKey: 'AIzaSyCMl2mMMUqa2xrFoNVeD9-kZBJeOfEvEeY',
+    appId: '1:214325242886:web:21bba4f59d8031d4926787',
+    messagingSenderId: '214325242886',
+    projectId: 'bloodpressureapp-bba65',
+    authDomain: 'bloodpressureapp-bba65.firebaseapp.com',
+    storageBucket: 'bloodpressureapp-bba65.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCBNfckpu3saAqofrZkRnw6B-ovBy8RvdQ',
-    appId: '1:774035192078:android:3b71850b6cd02886e3ff5f',
-    messagingSenderId: '774035192078',
-    projectId: 'guardpulse-da795',
-    storageBucket: 'guardpulse-da795.firebasestorage.app',
+    apiKey: 'AIzaSyAFUUDifZ3pSEaNSONgZYm8LdPGtLObmWI',
+    appId: '1:214325242886:android:4d08e139132816c5926787',
+    messagingSenderId: '214325242886',
+    projectId: 'bloodpressureapp-bba65',
+    storageBucket: 'bloodpressureapp-bba65.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyB17eKBTzXb6FHG2Vn2lyMym-leV5j2zQA',
-    appId: '1:774035192078:ios:f7e9b1e62809a552e3ff5f',
-    messagingSenderId: '774035192078',
-    projectId: 'guardpulse-da795',
-    storageBucket: 'guardpulse-da795.firebasestorage.app',
+    apiKey: 'AIzaSyA9lwIvgaVRfwuhw2cIJ_WiflRb2mahuYA',
+    appId: '1:214325242886:ios:0e3a695f96554aca926787',
+    messagingSenderId: '214325242886',
+    projectId: 'bloodpressureapp-bba65',
+    storageBucket: 'bloodpressureapp-bba65.firebasestorage.app',
     iosBundleId: 'com.example.bloodPressureApp',
   );
+
 }

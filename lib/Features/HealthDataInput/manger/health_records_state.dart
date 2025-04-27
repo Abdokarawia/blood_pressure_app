@@ -42,3 +42,14 @@ class HealthDataError extends HealthDataState {
   @override
   List<Object?> get props => [message];
 }
+
+class HealthGoalsLoaded extends HealthDataState {}
+class HealthGoalsLoading extends HealthDataState {}
+class HealthGoalsError extends HealthDataState {
+  final String message;
+
+  const HealthGoalsError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}

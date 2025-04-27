@@ -48,6 +48,28 @@ class Medication extends Equatable {
     };
   }
 
+  Medication copyWith({
+    String? id,
+    String? name,
+    String? dosage,
+    DateTime? time,
+    List<int>? selectedDays,
+    bool? isActive,
+    String? frequency,
+    String? colorHex,
+  }) {
+    return Medication(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      dosage: dosage ?? this.dosage,
+      time: time ?? this.time,
+      selectedDays: selectedDays ?? this.selectedDays,
+      isActive: isActive ?? this.isActive,
+      frequency: frequency ?? this.frequency,
+      colorHex: colorHex ?? this.colorHex,
+    );
+  }
+
   @override
   List<Object> get props => [id, name, dosage, time, selectedDays, isActive, frequency, colorHex];
 }

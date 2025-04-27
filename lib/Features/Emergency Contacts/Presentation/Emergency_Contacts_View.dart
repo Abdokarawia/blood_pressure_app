@@ -130,13 +130,6 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen>
                               backgroundColor: Colors.redAccent,
                             ),
                           );
-                        } else if (state is EmergencyContactsLoaded) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Contact added successfully'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
                         }
                       },
                       builder: (context, state) {
@@ -294,13 +287,6 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen>
                         SnackBar(
                           content: Text(state.message),
                           backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                    } else if (state is EmergencyContactsLoaded) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Operation successful'),
-                          backgroundColor: Colors.green,
                         ),
                       );
                     }

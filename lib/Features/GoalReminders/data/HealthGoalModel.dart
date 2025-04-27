@@ -91,7 +91,9 @@ enum GoalCategory {
   steps,
   activeMinutes,
   sleepHours,
-  hydration;
+  hydration,
+  weight,
+  goalWeightLoss;
 
   String get displayName {
     switch (this) {
@@ -101,6 +103,8 @@ enum GoalCategory {
       case GoalCategory.distanceCovered: return 'Distance Covered';
       case GoalCategory.steps: return 'Steps';
       case GoalCategory.activeMinutes: return 'Active Minutes';
+      case GoalCategory.weight: return 'Weight';
+      case GoalCategory.goalWeightLoss: return 'Goal Weight Loss';
       case GoalCategory.sleepHours: return 'Sleep Hours';
       case GoalCategory.hydration: return 'Hydration';
     }
