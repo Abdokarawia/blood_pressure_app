@@ -1,3 +1,4 @@
+import 'package:blood_pressure_app/Features/Authentication/Presentation/View/login_view.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
@@ -174,6 +175,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  // Method to handle logout
+  Future<void> _logOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      // Navigate to login screen and remove all previous routes
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false, // This will remove all previous routes
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to log out: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showDeleteAccountDialog() {
     showDialog(
       context: context,
@@ -226,8 +246,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   await user.delete();
                 }
 
-                // Navigate back to the first screen (login/signup)
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                // Navigate to login screen and remove all previous routes
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      (route) => false, // This will remove all previous routes
+                );
               } catch (e) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -685,7 +708,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            // Delete Account Button - Responsive margin
+            // Account Actions Container
             Container(
               margin: EdgeInsets.symmetric(
                 horizontal: max(
@@ -694,14 +717,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 vertical: 16,
               ),
-              width: double.infinity,
+              child: Row(
+                children: [
+                  // Logout Button
+              Expanded(
               child: TextButton.icon(
-                onPressed: _showDeleteAccountDialog,
-                icon: Icon(Iconsax.trash, color: Colors.red.shade400, size: 20),
+              onPressed: _showLogoutDialog,
+                icon: Icon(Iconsax.logout, color: Colors.blue.shade700, size: 20),
                 label: Text(
-                  'Delete Account',
+                  'Log Out',
                   style: GoogleFonts.poppins(
-                    color: Colors.red.shade400,
+                    color: Colors.blue.shade700,
                     fontWeight: FontWeight.w500,
                     fontSize: min(
                       15,
@@ -710,12 +736,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 style: TextButton.styleFrom(
-                  backgroundColor: Colors.red.shade50,
+                  backgroundColor: Colors.blue.shade50,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
+              ),
+            ),
+
+                  const SizedBox(width: 12),
+                  // Delete Account Button
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: _showDeleteAccountDialog,
+                      icon: Icon(Iconsax.trash, color: Colors.red.shade400, size: 20),
+                      label: Text(
+                        'Delete Account',
+                        style: GoogleFonts.poppins(
+                          color: Colors.red.shade400,
+                          fontWeight: FontWeight.w500,
+                          fontSize: min(
+                            15,
+                            MediaQuery.of(context).size.width * 0.035,
+                          ),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.red.shade50,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -849,7 +905,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ],
     );
   }
-
   Widget _buildHealthMetricCard(
       String title,
       String value,
@@ -1056,4 +1111,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Divider(color: Colors.grey.shade200, thickness: 1.5),
     );
   }
+
+  // Method to show logout dialog and handle logout
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Icon(Iconsax.logout, color: Colors.blue.shade700, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              'Log Out',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade700,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to log out from your account?',
+          style: GoogleFonts.poppins(fontSize: 15),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.signOut();
+                // Navigate to login screen and remove all previous routes
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      (route) => false, // This will remove all previous routes
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to log out: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: Text(
+              'Log Out',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

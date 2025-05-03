@@ -65,13 +65,16 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
               ? DateTime.parse(userData!['dateOfBirth'])
               : null,
           createdAt: firebaseUser.metadata.creationTime,
+          gender: userData?['gender'], // New field
+          height: userData?['height']?.toDouble(), // New field
+          weight: userData?['weight']?.toDouble(), // New field
         );
         emit(AuthenticationSuccess(user: user));
       }
     } on TimeoutException catch (e) {
       emit(AuthenticationError(
         message: e.message,
-            ));
+      ));
     } on FirebaseAuthException catch (e) {
       emit(AuthenticationError(
         message: _mapFirebaseErrorToMessage(e),
@@ -90,6 +93,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     required String name,
     String? phone,
     DateTime? dateOfBirth,
+    String? gender, // New parameter
+    double? height, // New parameter
+    double? weight, // New parameter
     Duration timeout = _defaultTimeout,
   }) async {
     emit(AuthenticationLoading());
@@ -120,6 +126,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
           phone: phone,
           dateOfBirth: dateOfBirth,
           createdAt: DateTime.now(),
+          gender: gender, // New field
+          height: height, // New field
+          weight: weight, // New field
         );
 
         // Store additional user data in Firestore
@@ -137,7 +146,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     } on TimeoutException catch (e) {
       emit(AuthenticationError(
         message: e.message,
-            ));
+      ));
     } on FirebaseAuthException catch (e) {
       emit(AuthenticationError(
         message: _mapFirebaseErrorToMessage(e),
@@ -212,6 +221,11 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
             email: firebaseUser.email??"",
             phone: firebaseUser.phoneNumber,
             createdAt: DateTime.now(),
+            // New fields will be null for new Google Sign-In users
+            // They can be updated later in the profile section
+            gender: null,
+            height: null,
+            weight: null,
           );
           await _firestore
               .collection('users')
@@ -250,6 +264,82 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     }
   }
 
+  // Update user profile method
+  Future<void> updateUserProfile({
+    required String uid,
+    String? name,
+    String? phone,
+    DateTime? dateOfBirth,
+    String? gender, // New field
+    double? height, // New field
+    double? weight, // New field
+    Duration timeout = _defaultTimeout,
+  }) async {
+    emit(AuthenticationLoading());
+    try {
+      // Get current user data
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(uid)
+          .get()
+          .timeout(
+        timeout,
+        onTimeout: () => throw TimeoutException('User data fetch timed out'),
+      );
+
+      if (!userDoc.exists) {
+        throw Exception('User not found');
+      }
+
+      final userData = userDoc.data()!;
+
+      // Update the fields that are provided
+      final updatedData = {
+        ...userData,
+        if (name != null) 'name': name,
+        if (phone != null) 'phone': phone,
+        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.toIso8601String(),
+        if (gender != null) 'gender': gender, // New field
+        if (height != null) 'height': height, // New field
+        if (weight != null) 'weight': weight, // New field
+        'lastUpdated': DateTime.now().toIso8601String(),
+      };
+
+      // Update Firestore
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .update(updatedData)
+          .timeout(
+        timeout,
+        onTimeout: () => throw TimeoutException('Profile update timed out'),
+      );
+
+      // Update display name in Firebase Auth if provided
+      if (name != null) {
+        final user = _firebaseAuth.currentUser;
+        if (user != null) {
+          await user.updateDisplayName(name).timeout(
+            timeout,
+            onTimeout: () => throw TimeoutException('Auth profile update timed out'),
+          );
+        }
+      }
+
+      // Create updated user model
+      final updatedUser = UserModel.fromJson({
+        ...updatedData,
+        'uid': uid,
+      });
+
+      emit(AuthenticationSuccess(user: updatedUser));
+    } on TimeoutException catch (e) {
+      emit(AuthenticationError(message: e.message));
+    } catch (e) {
+      emit(AuthenticationError(message: 'Failed to update profile: ${e.toString()}'));
+    }
+  }
+
   // Forgot Password
   Future<void> resetPassword({
     required String email,
@@ -267,7 +357,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     } on TimeoutException catch (e) {
       emit(AuthenticationError(
         message: e.message,
-        ));
+      ));
     } on FirebaseAuthException catch (e) {
       emit(AuthenticationError(
         message: _mapFirebaseErrorToMessage(e),

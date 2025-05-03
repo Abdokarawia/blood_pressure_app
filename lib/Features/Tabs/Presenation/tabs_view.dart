@@ -14,6 +14,7 @@ import '../../Authentication/Data/User_Model.dart';
 import '../../Emergency Contacts/Presentation/Emergency_Contacts_View.dart';
 import '../../Emergency Contacts/Presentation/manger/emergency_cubit.dart';
 import '../../GoalReminders/presentation/View/goal_reminders_view.dart';
+import '../../HealthDataAnalysis/Manger/health_data_analysis_cubit.dart';
 import '../../HealthDataAnalysis/Presentation/health_data_analysis_view.dart';
 import '../../Home/Presentation/Home_View.dart';
 import '../../MedicationReminders/Presentation/medication_reminders_view.dart';
@@ -227,6 +228,10 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
         BlocProvider(
           create: (context) => HealthDataCubit(),
         ),
+        BlocProvider(
+          create: (context) => HealthDataAnalysisCubit(),
+        ),
+
       ],
       child: BlocBuilder<TabCubit, int>(
         builder: (context, selectedIndex) {
@@ -372,7 +377,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
           case 3:
             return HealthDataInputScreen(animationController: _pageTransitionController);
           case 4:
-            return HealthDataAnalysisScreen(animationController: _pageTransitionController);
+            return HealthDataAnalysisScreen();
           case 5:
             return EmergencyContactsScreen();
           case 6:

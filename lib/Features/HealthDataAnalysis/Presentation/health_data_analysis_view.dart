@@ -1,233 +1,891 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:iconsax/iconsax.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
+import 'package:percent_indicator/percent_indicator.dart';
+import 'package:iconsax/iconsax.dart';
+import '../../GoalReminders/data/HealthGoalModel.dart';
+import '../Manger/health_data_analysis_cubit.dart';
 
 class HealthDataAnalysisScreen extends StatefulWidget {
-  final AnimationController animationController;
-
-  const HealthDataAnalysisScreen({Key? key, required this.animationController})
-    : super(key: key);
+  const HealthDataAnalysisScreen({Key? key}) : super(key: key);
 
   @override
-  _HealthDataAnalysisScreenState createState() =>
-      _HealthDataAnalysisScreenState();
+  State<HealthDataAnalysisScreen> createState() => _HealthDataAnalysisScreenState();
 }
 
-class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
+class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late HealthDataAnalysisCubit _analysisCubit;
+  bool _isLoading = true;
 
-  final List<Map<String, dynamic>> _activityData = [
-    {'date': 'Mon', 'steps': 7500, 'calories': 390, 'distance': 5.2},
-    {'date': 'Tue', 'steps': 9200, 'calories': 450, 'distance': 6.4},
-    {'date': 'Wed', 'steps': 6700, 'calories': 320, 'distance': 4.6},
-    {'date': 'Thu', 'steps': 8300, 'calories': 410, 'distance': 5.7},
-    {'date': 'Fri', 'steps': 10200, 'calories': 510, 'distance': 7.1},
-    {'date': 'Sat', 'steps': 12100, 'calories': 580, 'distance': 8.4},
-    {'date': 'Sun', 'steps': 8700, 'calories': 430, 'distance': 6.0},
+  final List<String> _metrics = [
+    'caloriesBurned',
+    'activeMinutes',
+    'steps',
+    'distance',
+    'hydration',
+    'weight',
+    'sleepHours',
+    'heartRate',
   ];
 
-  final List<Map<String, dynamic>> _nutritionData = [
-    {'date': 'Mon', 'calories': 2100, 'protein': 95, 'carbs': 230, 'fats': 65},
-    {'date': 'Tue', 'calories': 1950, 'protein': 105, 'carbs': 210, 'fats': 60},
-    {'date': 'Wed', 'calories': 2050, 'protein': 90, 'carbs': 240, 'fats': 63},
-    {'date': 'Thu', 'calories': 1900, 'protein': 100, 'carbs': 200, 'fats': 62},
-    {'date': 'Fri', 'calories': 2200, 'protein': 110, 'carbs': 235, 'fats': 70},
-    {'date': 'Sat', 'calories': 2300, 'protein': 115, 'carbs': 250, 'fats': 75},
-    {'date': 'Sun', 'calories': 2000, 'protein': 100, 'carbs': 220, 'fats': 65},
-  ];
-
-  final List<Map<String, dynamic>> _heartRateData = [
-    {'date': 'Mon', 'resting': 65, 'active': 135, 'variability': 45},
-    {'date': 'Tue', 'resting': 62, 'active': 140, 'variability': 50},
-    {'date': 'Wed', 'resting': 68, 'active': 145, 'variability': 42},
-    {'date': 'Thu', 'resting': 64, 'active': 138, 'variability': 47},
-    {'date': 'Fri', 'resting': 61, 'active': 152, 'variability': 51},
-    {'date': 'Sat', 'resting': 63, 'active': 158, 'variability': 53},
-    {'date': 'Sun', 'resting': 66, 'active': 140, 'variability': 46},
-  ];
-
-  final Map<String, dynamic> _weeklyAverage = {
-    'steps': 8957,
-    'calories': 2071,
-    'sleep': 7.57,
-    'heartRate': 64.1,
-    'stressLevel': 'Moderate',
-    'hydration': 2.3, // Liters
-    'meditation': 15, // Minutes
+  final Map<String, String> _metricNames = {
+    'caloriesBurned': 'Calories',
+    'activeMinutes': 'Active Time',
+    'steps': 'Steps',
+    'distance': 'Distance',
+    'hydration': 'Hydration',
+    'weight': 'Weight',
+    'sleepHours': 'Sleep',
+    'heartRate': 'Heart Rate',
   };
 
-  Future<void> _shareContent() async {
-    String shareText = 'My Weekly Health Report\n\n';
-    shareText +=
-        'Average Sleep: ${10.4.toStringAsFixed(1)} hours\n';
-    shareText += 'Average Steps: ${_weeklyAverage['steps']} steps\n';
-    shareText += 'Average Calories: ${_weeklyAverage['calories']} cal\n';
-    shareText += 'Average Heart Rate: ${_weeklyAverage['heartRate']} bpm\n';
-    shareText += 'Daily Hydration: ${_weeklyAverage['hydration']} liters\n';
+  // Using Iconsax icons for a more modern look
+  final Map<String, IconData> _metricIcons = {
+    'caloriesBurned': Iconsax.flash_1,
+    'activeMinutes': Iconsax.timer_1,
+    'steps': Icons.sports,
+    'distance': Icons.route,
+    'hydration': Icons.water,
+    'weight': Iconsax.weight,
+    'sleepHours': Iconsax.moon,
+    'heartRate': Iconsax.heart_tick,
+  };
 
-    await Share.share(shareText);
+  final Map<String, Color> _metricColors = {
+    'caloriesBurned': const Color(0xFFFF7E6B),
+    'activeMinutes': const Color(0xFF826AED),
+    'steps': const Color(0xFF4EADEA),
+    'distance': const Color(0xFF2DD4BF),
+    'hydration': const Color(0xFF38BDF8),
+    'weight': const Color(0xFFFBBF24),
+    'sleepHours': const Color(0xFF818CF8),
+    'heartRate': const Color(0xFFEF4444),
+  };
+
+  final Map<String, String> _metricUnits = {
+    'caloriesBurned': 'cal',
+    'activeMinutes': 'min',
+    'steps': 'steps',
+    'distance': 'km',
+    'hydration': 'L',
+    'weight': 'kg',
+    'sleepHours': 'hrs',
+    'heartRate': 'bpm',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this); // Only 2 tabs now
+    _analysisCubit = context.read<HealthDataAnalysisCubit>();
+    _loadData();
   }
 
-  Widget _buildAnalysisCard({
-    required String title,
-    required Widget child,
-    required bool isSmallScreen,
-    bool showShareIcon = false,
-  }) {
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    await _analysisCubit.analyzeHealthData(metrics: _metrics);
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Health Analytics',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onBackground,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Iconsax.refresh),
+            onPressed: _loadData,
+            color: Colors.teal,
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: _buildTabBar(),
+        ),
+      ),
+      body: BlocBuilder<HealthDataAnalysisCubit, HealthDataAnalysisState>(
+        builder: (context, state) {
+          if (state is HealthDataAnalysisLoading || _isLoading) {
+            return _buildLoadingState();
+          } else if (state is HealthDataAnalysisEmpty) {
+            return _buildEmptyState(state.message);
+          } else if (state is HealthDataAnalysisFailure) {
+            return _buildErrorState(state.error);
+          } else if (state is HealthDataAnalysisSuccess) {
+            final analysis = state.analysis;
+
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                // OVERVIEW TAB
+                _buildOverviewTab(analysis),
+
+                // TRENDS TAB
+                _buildTrendsTab(analysis),
+              ],
+            );
+          }
+
+          return _buildEmptyState("No data available");
+        },
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(isSmallScreen ? 15 : 20),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      height: 50,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade100,
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+        color: Theme.of(context).cardColor.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          color: Colors.teal,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.teal.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        labelColor: Colors.white,
+        unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        tabs: const [
+          Tab(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Iconsax.home_2),
+                SizedBox(width: 8),
+                Text('Overview'),
+              ],
+            ),
+          ),
+          Tab(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Iconsax.chart_2),
+                SizedBox(width: 8),
+                Text('Trends'),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            height: 80,
+            width: 80,
+            child: CircularProgressIndicator(
+              strokeWidth: 8,
+              backgroundColor: Colors.teal.withOpacity(0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Loading your health data...',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Iconsax.chart_fail,
+            size: 80,
+            color: Colors.teal.withOpacity(0.5),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            icon: const Icon(Iconsax.add),
+            label: const Text('Add Health Data'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Iconsax.warning_2,
+            size: 80,
+            color: Colors.red[400],
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Error: $error',
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: _loadData,
+            icon: const Icon(Iconsax.refresh),
+            label: const Text('Try Again'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewTab(Map<String, dynamic> analysis) {
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          _buildHealthSummaryCard(analysis),
+          const SizedBox(height: 20),
+          _buildRecentActivityCard(analysis),
+          const SizedBox(height: 20),
+          _buildStatCards(analysis),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHealthSummaryCard(Map<String, dynamic> analysis) {
+    final dataPoints = analysis['dataPoints'];
+    final periodStart = analysis['period']['start'] as DateTime;
+    final periodEnd = analysis['period']['end'] as DateTime;
+    final dateFormat = DateFormat('MMM d, yyyy');
+
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.teal.withOpacity(0.2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Iconsax.health,
+                        color: Colors.teal,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Health Summary',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildSummaryItem(
+                    Iconsax.calendar,
+                    'Period',
+                    '${dateFormat.format(periodStart)} - ${dateFormat.format(periodEnd)}',
+                  ),
+                  _buildSummaryItem(
+                    Iconsax.document,
+                    'Data Points',
+                    dataPoints.toString(),
+                  ),
+                  _buildSummaryItem(
+                    Iconsax.calendar_1,
+                    'Days',
+                    '${periodEnd.difference(periodStart).inDays + 1}',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(IconData icon, String label, String value) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.teal.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.teal,
+            size: 20,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentActivityCard(Map<String, dynamic> analysis) {
+    final goalProgress = analysis['goalProgress'] as Map<String, dynamic>? ?? {};
+
+    List<MapEntry<String, Map<String, dynamic>>> sortedGoals = [];
+    if (goalProgress.isNotEmpty) {
+      sortedGoals = goalProgress.entries
+          .map((entry) => MapEntry(
+        entry.key,
+        entry.value as Map<String, dynamic>, // Explicit cast
+      ))
+          .toList()
+        ..sort((a, b) => (b.value['percentage'] as double)
+            .compareTo(a.value['percentage'] as double));
+      if (sortedGoals.length > 3) {
+        sortedGoals = sortedGoals.sublist(0, 3);
+      }
+    }
+
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.teal.withOpacity(0.2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4EADEA).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Iconsax.activity,
+                    color: Color(0xFF4EADEA),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Recent Activity',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (sortedGoals.isNotEmpty)
+              ...sortedGoals.map((entry) => _buildProgressItem(entry.key, entry.value))
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Iconsax.clock,
+                        size: 36,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No recent activity data available',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressItem(String metric, Map<String, dynamic> progress) {
+    final percentage = progress['percentage'] as double;
+    final current = progress['current'];
+    final target = progress['target'];
+    final color = _metricColors[metric] ?? Colors.teal;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 16 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              if (showShareIcon)
-                GestureDetector(
-                  onTap: () => _shareContent(),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.share,
-                      size: isSmallScreen ? 16 : 18,
-                      color: Colors.grey.shade600,
+              Row(
+                children: [
+                  Icon(
+                    _metricIcons[metric] ?? Iconsax.activity,
+                    color: color,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _metricNames[metric] ?? metric,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
+                ],
+              ),
+              Text(
+                '${percentage.toInt()}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: color,
                 ),
+              ),
             ],
           ),
-          const SizedBox(height: 15),
-          child,
+          const SizedBox(height: 8),
+          LinearPercentIndicator(
+            lineHeight: 10,
+            percent: percentage / 100,
+            backgroundColor: color.withOpacity(0.2),
+            progressColor: color,
+            animation: true,
+            animationDuration: 1000,
+            barRadius: const Radius.circular(5),
+            padding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${current.toStringAsFixed(1)} ${_metricUnits[metric] ?? ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+              Text(
+                'Target: ${target.toStringAsFixed(1)} ${_metricUnits[metric] ?? ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 400;
+  Widget _buildStatCards(Map<String, dynamic> analysis) {
+    final metrics = analysis['metrics'] as Map<String, dynamic>;
+    final trends = analysis['trends'] as Map<String, dynamic>;
 
-    return AnimatedBuilder(
-      animation: widget.animationController,
-      builder: (context, child) {
-        final slideAnimation = Tween<Offset>(
-          begin: const Offset(0, 0.3),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(
-            parent: widget.animationController,
-            curve: Curves.easeOutQuad,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 16),
+          child: Text(
+            'Health Metrics',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
-        );
-
-        final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-          CurvedAnimation(
-            parent: widget.animationController,
-            curve: Curves.easeOutQuad,
+        ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 1.0,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
           ),
-        );
+          itemCount: _metrics.length,
+          itemBuilder: (context, index) {
+            final metric = _metrics[index];
+            if (!metrics.containsKey(metric)) {
+              return const SizedBox();
+            }
 
-        return FadeTransition(
-          opacity: fadeAnimation,
-          child: SlideTransition(
-            position: slideAnimation,
-            child: Scaffold(
-              body: SafeArea(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            final metricData = metrics[metric];
+            final trendDirection = trends[metric];
+            final color = _metricColors[metric] ?? Colors.teal;
+
+            return _buildMetricCard(
+              metric,
+              metricData,
+              trendDirection,
+              color,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard(
+      String metric,
+      Map<String, dynamic> data,
+      String trendDirection,
+      Color color,
+      ) {
+    final currentValue = data['current'];
+    final formattedValue = currentValue is int
+        ? currentValue.toString()
+        : currentValue.toStringAsFixed(1);
+
+    final changePercentage = data['changePercentage'];
+
+    IconData trendIcon;
+    Color trendColor;
+
+    if (trendDirection == 'increasing') {
+      trendIcon = Iconsax.trend_up;
+      trendColor = metric == 'weight' ? Colors.red : Colors.green;
+    } else if (trendDirection == 'decreasing') {
+      trendIcon = Iconsax.trend_down;
+      trendColor = metric == 'weight' ? Colors.green : Colors.red;
+    } else {
+      trendIcon = Iconsax.arrow_right_3;
+      trendColor = Colors.grey;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(0.7),
+            color,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Opacity(
+              opacity: 0.2,
+              child: Icon(
+                _metricIcons[metric] ?? Iconsax.activity,
+                size: 100,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _metricIcons[metric] ?? Iconsax.activity,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'Health Analysis',
-                            style: GoogleFonts.poppins(
-                              fontSize: isSmallScreen ? 22 : 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade800,
-                            ),
+                          Icon(
+                            trendIcon,
+                            color: Colors.white,
+                            size: 14,
                           ),
-                          GestureDetector(
-                            onTap: () => _shareContent(),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.teal.shade500,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Iconsax.share,
-                                size: 20,
-                                color: Colors.white,
-                              ),
+                          const SizedBox(width: 4),
+                          Text(
+                            changePercentage,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-
-                      Text(
-                        'Last 7 Days',
-                        style: GoogleFonts.poppins(
-                          fontSize: isSmallScreen ? 14 : 16,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Activity Analysis Card
-                      _buildAnalysisCard(
-                        title: 'Activity & Steps',
-                        isSmallScreen: isSmallScreen,
-                        child: _buildActivityAnalysis(isSmallScreen),
-                      ),
-                      const SizedBox(height: 15),
-
-                      // Heart Rate Card
-                      _buildAnalysisCard(
-                        title: 'Heart Rate',
-                        isSmallScreen: isSmallScreen,
-                        child: _buildHeartRateAnalysis(isSmallScreen),
-                      ),
-                      const SizedBox(height: 15),
-
-                      // Nutrition Card
-                      _buildAnalysisCard(
-                        title: 'Nutrition',
-                        isSmallScreen: isSmallScreen,
-                        child: _buildNutritionAnalysis(isSmallScreen),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  formattedValue,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      _metricNames[metric] ?? metric,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _metricUnits[metric] ?? '',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendsTab(Map<String, dynamic> analysis) {
+    final metrics = analysis['metrics'] as Map<String, dynamic>;
+    final historicalData = analysis['historicalData'] as Map<String, dynamic>?;
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _metrics.length,
+      itemBuilder: (context, index) {
+        final metric = _metrics[index];
+        if (!metrics.containsKey(metric)) {
+          return const SizedBox();
+        }
+
+        final metricData = metrics[metric];
+        final color = _metricColors[metric] ?? Colors.teal;
+
+        // Handle historical data with proper type safety
+        List<Map<String, dynamic>> metricHistory = [];
+        if (historicalData != null && historicalData.containsKey(metric)) {
+          final historyData = historicalData[metric];
+          if (historyData is List) {
+            for (var item in historyData) {
+              if (item is Map) {
+                metricHistory.add(Map<String, dynamic>.from(item));
+              }
+            }
+          }
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 20),
+          elevation: 2,
+          shadowColor: color.withOpacity(0.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _metricIcons[metric] ?? Iconsax.activity,
+                        color: color,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      _metricNames[metric] ?? metric,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  height: 240,
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: _buildMetricChart(metric, color, metricHistory),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: _buildMetricStats(metricData, metric),
+                ),
+              ],
             ),
           ),
         );
@@ -235,743 +893,203 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> {
     );
   }
 
+  Widget _buildMetricChart(String metric, Color color, List<Map<String, dynamic>> metricHistory) {
+    // Use real data if available, otherwise use sample data
+    List<FlSpot> spots = [];
 
-  Widget _buildActivityAnalysis(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Daily Step Count',
-              style: GoogleFonts.poppins(
-                fontSize: isSmallScreen ? 14 : 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                'Avg: ${_averageSteps()} steps',
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 12 : 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green.shade700,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          height: isSmallScreen ? 180 : 200,
-          child: _buildStepsChart(isSmallScreen),
-        ),
-        const SizedBox(height: 15),
-        _buildActivityStats(isSmallScreen),
-      ],
-    );
-  }
+    if (metricHistory.isNotEmpty) {
+      spots = List.generate(metricHistory.length, (index) {
+        final value = metricHistory[index]['value'];
+        if (value is num) {
+          return FlSpot(index.toDouble(), value.toDouble());
+        }
+        return FlSpot(index.toDouble(), 0.0);
+      });
+    } else {
+      // Fallback to sample data
+      spots = [
+        const FlSpot(0, 3),
+        const FlSpot(1, 1),
+        const FlSpot(2, 4),
+        const FlSpot(3, 2),
+        const FlSpot(4, 5),
+        const FlSpot(5, 3),
+        const FlSpot(6, 4),
+      ];
+    }
 
-  Widget _buildStepsChart(bool isSmallScreen) {
     return LineChart(
-      LineChartData(
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (List<LineBarSpot> touchedSpots) {
-              return touchedSpots.map((spot) {
-                final data = _activityData[spot.x.toInt()];
-                return LineTooltipItem(
-                  '${data['steps']} steps\n${data['calories']} cal',
-                  GoogleFonts.poppins(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ),
+        LineChartData(
         gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 3000,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(color: Colors.grey.shade200, strokeWidth: 1);
-          },
+        show: true,
+        drawVerticalLine: true,
+        horizontalInterval: 1,
+        verticalInterval: 1,
+        getDrawingHorizontalLine: (value) {
+      return FlLine(
+        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+        strokeWidth: 1,
+      );
+    },
+    getDrawingVerticalLine: (value) {
+    return FlLine(
+    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+      strokeWidth: 1,
+    );
+    },
         ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() < _activityData.length) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      _activityData[value.toInt()]['date'],
-                      style: GoogleFonts.poppins(
-                        color: Colors.grey.shade600,
-                        fontSize: isSmallScreen ? 10 : 12,
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  if (metricHistory.isEmpty || value >= metricHistory.length || value < 0) {
+                    return const SizedBox();
+                  }
+
+                  final date = metricHistory[value.toInt()]['date'];
+                  if (date is DateTime) {
+                    return Text(
+                      DateFormat('dd/MM').format(date),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
                       ),
+                    );
+                  }
+
+                  return Text(
+                    value.toInt().toString(),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
                     ),
                   );
-                }
-                return const SizedBox();
-              },
+                },
+              ),
             ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: 3000,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  value >= 1000
-                      ? '${(value / 1000).toInt()}k'
-                      : '${value.toInt()}',
-                  style: GoogleFonts.poppins(
-                    color: Colors.grey.shade600,
-                    fontSize: 10,
-                  ),
-                );
-              },
-              reservedSize: 30,
-            ),
-          ),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(show: false),
-        minX: 0,
-        maxX: _activityData.length - 1.0,
-        minY: 0,
-        maxY: 15000,
-        lineBarsData: [
-          LineChartBarData(
-            spots:
-                _activityData.asMap().entries.map((entry) {
-                  return FlSpot(
-                    entry.key.toDouble(),
-                    entry.value['steps'].toDouble(),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
                   );
-                }).toList(),
-            isCurved: true,
-            gradient: LinearGradient(
-              colors: [Colors.green.shade300, Colors.green.shade600],
+                },
+                reservedSize: 42,
+              ),
             ),
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 4,
-                  color: Colors.white,
-                  strokeWidth: 2,
-                  strokeColor: Colors.green.shade600,
-                );
-              },
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
             ),
-            belowBarData: BarAreaData(
-              show: true,
+          ),
+          minX: 0,
+          maxX: spots.isEmpty ? 6 : spots.length - 1.0,
+          minY: spots.isEmpty ? 0 : spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) - 1,
+          maxY: spots.isEmpty ? 6 : spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 1,
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
               gradient: LinearGradient(
                 colors: [
-                  Colors.green.withOpacity(0.3),
-                  Colors.green.withOpacity(0.0),
+                  color.withOpacity(0.5),
+                  color,
                 ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityStats(bool isSmallScreen) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.green.withOpacity(0.2), width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildActivityStatItem(
-            'Total Steps',
-            '${_totalSteps()}',
-            Colors.green.shade700,
-            isSmallScreen,
-          ),
-          _buildActivityStatItem(
-            'Total Distance',
-            '${_totalDistance().toStringAsFixed(1)} km',
-            Colors.green.shade600,
-            isSmallScreen,
-          ),
-          _buildActivityStatItem(
-            'Calories Burned',
-            '${_totalActivityCalories()}',
-            Colors.green.shade500,
-            isSmallScreen,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityStatItem(
-    String label,
-    String value,
-    Color color,
-    bool isSmallScreen,
-  ) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 14 : 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 13,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHeartRateAnalysis(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Resting Heart Rate',
-              style: GoogleFonts.poppins(
-                fontSize: isSmallScreen ? 14 : 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) {
+                  return FlDotCirclePainter(
+                    radius: 4,
+                    color: color,
+                    strokeWidth: 2,
+                    strokeColor: Colors.white,
+                  );
+                },
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                'Avg: ${_averageRestingHeartRate()} bpm',
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 12 : 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.red.shade700,
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    color.withOpacity(0.3),
+                    color.withOpacity(0.0),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          height: isSmallScreen ? 180 : 200,
-          child: _buildHeartRateChart(isSmallScreen),
-        ),
-        const SizedBox(height: 15),
-        _buildHeartRateStats(isSmallScreen),
-      ],
     );
   }
 
-  Widget _buildHeartRateChart(bool isSmallScreen) {
-    return LineChart(
-      LineChartData(
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (List<LineBarSpot> touchedSpots) {
-              return touchedSpots.map((spot) {
-                final data = _heartRateData[spot.x.toInt()];
-                return LineTooltipItem(
-                  '${spot.y.toInt()} bpm\n${data['date']}',
-                  GoogleFonts.poppins(
-                    color: Colors.red.shade700,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 20,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(color: Colors.grey.shade200, strokeWidth: 1);
-          },
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() < _heartRateData.length) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      _heartRateData[value.toInt()]['date'],
-                      style: GoogleFonts.poppins(
-                        color: Colors.grey.shade600,
-                        fontSize: isSmallScreen ? 10 : 12,
-                      ),
-                    ),
-                  );
-                }
-                return const SizedBox();
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: 20,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  '${value.toInt()}',
-                  style: GoogleFonts.poppins(
-                    color: Colors.grey.shade600,
-                    fontSize: 10,
-                  ),
-                );
-              },
-              reservedSize: 30,
-            ),
-          ),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(show: false),
-        minX: 0,
-        maxX: _heartRateData.length - 1.0,
-        minY: 40,
-        maxY: 100,
-        lineBarsData: [
-          LineChartBarData(
-            spots:
-                _heartRateData.asMap().entries.map((entry) {
-                  return FlSpot(
-                    entry.key.toDouble(),
-                    entry.value['resting'].toDouble(),
-                  );
-                }).toList(),
-            isCurved: true,
-            gradient: LinearGradient(
-              colors: [Colors.red.shade300, Colors.red.shade600],
-            ),
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 4,
-                  color: Colors.white,
-                  strokeWidth: 2,
-                  strokeColor: Colors.red.shade600,
-                );
-              },
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.red.withOpacity(0.3),
-                  Colors.red.withOpacity(0.0),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildMetricStats(Map<String, dynamic> metricData, String metric) {
+    final current = metricData['current'];
+    final average = metricData['average'];
+    final lowest = metricData['lowest'];
+    final highest = metricData['highest'];
+    final unit = _metricUnits[metric] ?? '';
 
-  Widget _buildHeartRateStats(bool isSmallScreen) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.red.withOpacity(0.2), width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildHeartRateStatItem(
-            'Resting',
-            '${_averageRestingHeartRate()} bpm',
-            Colors.red.shade700,
-            isSmallScreen,
-          ),
-          _buildHeartRateStatItem(
-            'Active',
-            '${_averageActiveHeartRate()} bpm',
-            Colors.red.shade600,
-            isSmallScreen,
-          ),
-          _buildHeartRateStatItem(
-            'HRV',
-            '${_averageHeartRateVariability()} ms',
-            Colors.red.shade500,
-            isSmallScreen,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeartRateStatItem(
-    String label,
-    String value,
-    Color color,
-    bool isSmallScreen,
-  ) {
     return Column(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 14 : 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 13,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNutritionAnalysis(bool isSmallScreen) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Daily Nutrition',
-              style: GoogleFonts.poppins(
-                fontSize: isSmallScreen ? 14 : 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                'Avg: ${_averageNutritionCalories()} cal',
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 12 : 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.orange.shade700,
-                ),
-              ),
-            ),
+            _buildStatItem('Current', current.toString() + ' ' + unit),
+            _buildStatItem('Average', average.toString() + ' ' + unit),
           ],
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          height: isSmallScreen ? 180 : 200,
-          child: _buildNutritionChart(isSmallScreen),
-        ),
-        const SizedBox(height: 15),
-        _buildNutritionStats(isSmallScreen),
       ],
     );
   }
 
-  Widget _buildNutritionChart(bool isSmallScreen) {
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: 2500,
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            tooltipPadding: const EdgeInsets.all(8),
-            tooltipMargin: 8,
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final data = _nutritionData[groupIndex];
-              return BarTooltipItem(
-                '${data['calories']} cal\nP: ${data['protein']}g | C: ${data['carbs']}g | F: ${data['fats']}g',
-                GoogleFonts.poppins(
-                  color: Colors.orange.shade700,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              );
-            },
-          ),
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    _nutritionData[value.toInt()]['date'],
-                    style: GoogleFonts.poppins(
-                      color: Colors.grey.shade600,
-                      fontSize: isSmallScreen ? 10 : 12,
-                    ),
-                  ),
-                );
-              },
-              reservedSize: 30,
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              interval: 500,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  '${value.toInt()}',
-                  style: GoogleFonts.poppins(
-                    color: Colors.grey.shade600,
-                    fontSize: 10,
-                  ),
-                );
-              },
-            ),
-          ),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        gridData: FlGridData(
-          show: true,
-          horizontalInterval: 500,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(color: Colors.grey.shade200, strokeWidth: 1);
-          },
-          drawVerticalLine: false,
-        ),
-        borderData: FlBorderData(show: false),
-        barGroups:
-            _nutritionData.asMap().entries.map((entry) {
-              int index = entry.key;
-              Map<String, dynamic> data = entry.value;
-
-              return BarChartGroupData(
-                x: index,
-                barRods: [
-                  BarChartRodData(
-                    toY: data['calories'].toDouble(),
-                    gradient: LinearGradient(
-                      colors: [Colors.orange.shade300, Colors.orange.shade600],
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                    ),
-                    width: isSmallScreen ? 15 : 20,
-                    borderRadius: BorderRadius.circular(4),
-                    backDrawRodData: BackgroundBarChartRodData(
-                      show: true,
-                      toY: 2200, // Target calories
-                      color: Colors.grey.shade100,
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildNutritionStats(bool isSmallScreen) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.orange.withOpacity(0.2), width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+  Widget _buildStatItem(String label, String value) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildNutritionStatItem(
-            'Protein',
-            '${_averageProtein()}g',
-            Colors.orange.shade700,
-            isSmallScreen,
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
-          _buildNutritionStatItem(
-            'Carbs',
-            '${_averageCarbs()}g',
-            Colors.orange.shade600,
-            isSmallScreen,
-          ),
-          _buildNutritionStatItem(
-            'Fats',
-            '${_averageFats()}g',
-            Colors.orange.shade500,
-            isSmallScreen,
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildNutritionStatItem(
-    String label,
-    String value,
-    Color color,
-    bool isSmallScreen,
-  ) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 14 : 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 13,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
-    );
-  }
-
-
-  // Helper methods for calculations
-  int _averageSteps() {
-    int total = 0;
-    for (var data in _activityData) {
-      total += (data['steps'] as num).toInt();
-    }
-    return (total / _activityData.length).round();
-  }
-
-  int _totalSteps() {
-    int total = 0;
-    for (var data in _activityData) {
-      total += (data['steps'] as num).toInt();
-    }
-    return total;
-  }
-
-  double _totalDistance() {
-    double total = 0;
-    for (var data in _activityData) {
-      total += (data['distance'] as num).toDouble();
-    }
-    return total;
-  }
-
-  int _totalActivityCalories() {
-    int total = 0;
-    for (var data in _activityData) {
-      total += (data['calories'] as num).toInt();
-    }
-    return total;
-  }
-
-  int _averageRestingHeartRate() {
-    int total = 0;
-    for (var data in _heartRateData) {
-      total += (data['resting'] as num).toInt();
-    }
-    return (total / _heartRateData.length).round();
-  }
-
-  int _averageActiveHeartRate() {
-    int total = 0;
-    for (var data in _heartRateData) {
-      total += (data['active'] as num).toInt();
-    }
-    return (total / _heartRateData.length).round();
-  }
-
-  int _averageHeartRateVariability() {
-    int total = 0;
-    for (var data in _heartRateData) {
-      total += (data['variability'] as num).toInt();
-    }
-    return (total / _heartRateData.length).round();
-  }
-
-  int _averageNutritionCalories() {
-    int total = 0;
-    for (var data in _nutritionData) {
-      total += (data['calories'] as num).toInt();
-    }
-    return (total / _nutritionData.length).round();
-  }
-
-  int _averageProtein() {
-    int total = 0;
-    for (var data in _nutritionData) {
-      total += (data['protein'] as num).toInt();
-    }
-    return (total / _nutritionData.length).round();
-  }
-
-  int _averageCarbs() {
-    int total = 0;
-    for (var data in _nutritionData) {
-      total += (data['carbs'] as num).toInt();
-    }
-    return (total / _nutritionData.length).round();
-  }
-
-  int _averageFats() {
-    int total = 0;
-    for (var data in _nutritionData) {
-      total += (data['fats'] as num).toInt();
-    }
-    return (total / _nutritionData.length).round();
   }
 }

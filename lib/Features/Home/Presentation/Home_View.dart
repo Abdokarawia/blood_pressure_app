@@ -1453,8 +1453,6 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                _buildBMIChart(isSmallScreen),
-                const SizedBox(height: 20),
                 Text(
                   'Your Stats',
                   style: GoogleFonts.poppins(

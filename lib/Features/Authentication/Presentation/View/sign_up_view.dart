@@ -25,6 +25,12 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   final TextEditingController _dateOfBirthController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  // New controllers for height and weight
+  final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _weightController = TextEditingController();
+  // Gender selection
+  String _selectedGender = 'Male'; // Default to Male
+
   bool _agreeToTerms = false;
   DateTime? _selectedDate;
 
@@ -62,6 +68,9 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     _dateOfBirthController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    // Dispose new controllers
+    _heightController.dispose();
+    _weightController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -279,6 +288,41 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
             },
           ),
           const SizedBox(height: 20),
+          // Gender selection
+          _buildGenderSelector(),
+          const SizedBox(height: 20),
+          // Height field
+          _buildAnimatedTextField(
+            controller: _heightController,
+            icon: Icons.height,
+            label: 'Height (cm)',
+            hint: 'Enter your height',
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Please enter your height';
+              final height = double.tryParse(value);
+              if (height == null) return 'Please enter a valid number';
+              if (height < 50 || height > 250) return 'Please enter a realistic height (50-250 cm)';
+              return null;
+            },
+          ),
+          const SizedBox(height: 20),
+          // Weight field
+          _buildAnimatedTextField(
+            controller: _weightController,
+            icon: Icons.monitor_weight_outlined,
+            label: 'Weight (kg)',
+            hint: 'Enter your weight',
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Please enter your weight';
+              final weight = double.tryParse(value);
+              if (weight == null) return 'Please enter a valid number';
+              if (weight < 20 || weight > 500) return 'Please enter a realistic weight (20-500 kg)';
+              return null;
+            },
+          ),
+          const SizedBox(height: 20),
           _buildAnimatedTextField(
             controller: _passwordController,
             icon: Icons.lock_outline,
@@ -331,6 +375,86 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
           _buildSignInPrompt(context),
         ],
       ),
+    );
+  }
+
+  // New method to build the gender selector
+  Widget _buildGenderSelector() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 30),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 8),
+                    child: Text(
+                      'Gender',
+                      style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Icon(Icons.person_2_outlined, color: Colors.green[700], size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: Text('Male',
+                                  style: GoogleFonts.poppins(fontSize: 15),
+                                ),
+                                value: 'Male',
+                                groupValue: _selectedGender,
+                                activeColor: Colors.green[700],
+                                contentPadding: EdgeInsets.zero,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedGender = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: Text('Female',
+                                  style: GoogleFonts.poppins(fontSize: 15),
+                                ),
+                                value: 'Female',
+                                groupValue: _selectedGender,
+                                activeColor: Colors.green[700],
+                                contentPadding: EdgeInsets.zero,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedGender = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -473,12 +597,19 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                   ? null
                   : () {
                 if (_formKey.currentState!.validate() && _agreeToTerms) {
+                  // Convert height and weight from strings to doubles
+                  double? height = double.tryParse(_heightController.text);
+                  double? weight = double.tryParse(_weightController.text);
+
                   context.read<AuthenticationCubit>().signUpWithEmailAndPassword(
                     email: _emailController.text.trim(),
                     password: _passwordController.text.trim(),
                     name: _nameController.text.trim(),
                     phone: _phoneController.text.trim(),
                     dateOfBirth: _selectedDate,
+                    gender: _selectedGender,
+                    height: height,
+                    weight: weight,
                   );
                 } else if (!_agreeToTerms) {
                   ScaffoldMessenger.of(context).showSnackBar(
