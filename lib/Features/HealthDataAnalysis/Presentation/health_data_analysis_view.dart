@@ -877,14 +877,6 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> wit
                   child: _buildMetricChart(metric, color, metricHistory),
                 ),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: _buildMetricStats(metricData, metric),
-                ),
               ],
             ),
           ),
@@ -1047,49 +1039,5 @@ class _HealthDataAnalysisScreenState extends State<HealthDataAnalysisScreen> wit
     );
   }
 
-  Widget _buildMetricStats(Map<String, dynamic> metricData, String metric) {
-    final current = metricData['current'];
-    final average = metricData['average'];
-    final lowest = metricData['lowest'];
-    final highest = metricData['highest'];
-    final unit = _metricUnits[metric] ?? '';
 
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildStatItem('Current', current.toString() + ' ' + unit),
-            _buildStatItem('Average', average.toString() + ' ' + unit),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
 }

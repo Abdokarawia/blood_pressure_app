@@ -305,9 +305,7 @@ class _HomeViewState extends State<HomeView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 5),
-                _buildSleepCaloriesCard(isSmallScreen),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
@@ -943,123 +941,6 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildSleepCaloriesCard(bool isSmallScreen) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade100, Colors.blue.shade50],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.blue.shade200, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Sleep Calorie Burn',
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 14 : 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade800,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade200,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${_sleepCaloriesData['caloriesPerHour']} cal/h',
-                  style: GoogleFonts.poppins(
-                    fontSize: isSmallScreen ? 12 : 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Burned Last Night',
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 12 : 14,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '${_sleepCaloriesData['caloriesBurned']} cal',
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 20 : 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Optimal Target',
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 12 : 14,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '${_sleepCaloriesData['optimalSleepCalories']} cal',
-                    style: GoogleFonts.poppins(
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          LinearProgressIndicator(
-            value:
-                _sleepCaloriesData['caloriesBurned'] /
-                _sleepCaloriesData['optimalSleepCalories'],
-            backgroundColor: Colors.blue.shade100,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade500),
-            minHeight: 10,
-            borderRadius: BorderRadius.circular(5),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _sleepCaloriesData['comparison'],
-            style: GoogleFonts.poppins(
-              fontSize: isSmallScreen ? 12 : 13,
-              color: Colors.blue.shade800,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildTipItem(String tip) {
     return Padding(
@@ -1230,31 +1111,6 @@ class _HomeViewState extends State<HomeView> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSleepPhase(
-    String phase,
-    double hours,
-    Color color,
-    bool isSmallScreen,
-  ) {
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          '$phase: $hours hrs',
-          style: GoogleFonts.poppins(
-            fontSize: isSmallScreen ? 12 : 13,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
     );
   }
 

@@ -91,17 +91,27 @@ class HealthDataAnalysisCubit extends Cubit<HealthDataAnalysisState> {
         'metrics': <String, Map<String, dynamic>>{},
         'trends': <String, String>{},
         'goalProgress': <String, Map<String, dynamic>>{},
+        'hasDataForMetric': <String, bool>{},  // Track which metrics have data
       };
 
       // Calculate statistics for each requested metric
       for (final metric in metrics) {
         // Skip metrics that don't exist in the model
-        if (!_isValidMetric(metric)) continue;
+        if (!_isValidMetric(metric)) {
+          analysis['hasDataForMetric'][metric] = false;
+          continue;
+        }
 
         // Extract values for this metric
         List<num> values = _extractMetricValues(historyData, metric);
 
-        if (values.isEmpty) continue;
+        if (values.isEmpty || values.every((v) => v == 0)) {
+          analysis['hasDataForMetric'][metric] = false;
+          continue;
+        }
+
+        // Mark that this metric has data
+        analysis['hasDataForMetric'][metric] = true;
 
         // Calculate statistics
         num min = values.reduce((a, b) => a < b ? a : b);
@@ -142,6 +152,15 @@ class HealthDataAnalysisCubit extends Cubit<HealthDataAnalysisState> {
             };
           }
         }
+      }
+
+      // Check if we have any data for any metric
+      bool hasAnyData = analysis['hasDataForMetric'].values.any((hasData) => hasData == true);
+      if (!hasAnyData) {
+        return {
+          'status': 'empty',
+          'message': 'No health data available for selected metrics'
+        };
       }
 
       return {
