@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,7 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   final TextEditingController _dateOfBirthController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  // New controllers for height and weight
+  // Controllers for height and weight with numeric input only
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   // Gender selection
@@ -291,13 +292,16 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
           // Gender selection
           _buildGenderSelector(),
           const SizedBox(height: 20),
-          // Height field
+          // Height field - with numeric input formatter
           _buildAnimatedTextField(
             controller: _heightController,
             icon: Icons.height,
             label: 'Height (cm)',
             hint: 'Enter your height',
             keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+            ],
             validator: (value) {
               if (value == null || value.isEmpty) return 'Please enter your height';
               final height = double.tryParse(value);
@@ -307,13 +311,16 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
             },
           ),
           const SizedBox(height: 20),
-          // Weight field
+          // Weight field - with numeric input formatter
           _buildAnimatedTextField(
             controller: _weightController,
             icon: Icons.monitor_weight_outlined,
             label: 'Weight (kg)',
             hint: 'Enter your weight',
             keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+            ],
             validator: (value) {
               if (value == null || value.isEmpty) return 'Please enter your weight';
               final weight = double.tryParse(value);
@@ -469,6 +476,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     bool readOnly = false,
     Widget? suffixIcon,
     VoidCallback? onTap,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -484,6 +492,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
               obscureText: obscureText,
               readOnly: readOnly,
               onTap: onTap,
+              inputFormatters: inputFormatters,
               cursorColor: Colors.green[700],
               style: GoogleFonts.poppins(fontSize: 15),
               decoration: InputDecoration(
@@ -597,7 +606,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                   ? null
                   : () {
                 if (_formKey.currentState!.validate() && _agreeToTerms) {
-                  // Convert height and weight from strings to doubles
+                  // Parse height and weight to double values
                   double? height = double.tryParse(_heightController.text);
                   double? weight = double.tryParse(_weightController.text);
 
