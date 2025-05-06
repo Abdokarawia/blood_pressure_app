@@ -148,8 +148,7 @@ class _HomeViewState extends State<HomeView> {
         data: {
           "current_weight_kg": widget.userStats['weight'],
           "sleep_hours": _calculateAverageSleep(),
-          "weight_loss_required":
-          widget.userStats['weight'] - 10,
+          "weight_loss_required": 10,
         },
         options: Options(headers: {'Content-Type': 'application/json'}),
       );
@@ -305,7 +304,7 @@ class _HomeViewState extends State<HomeView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(

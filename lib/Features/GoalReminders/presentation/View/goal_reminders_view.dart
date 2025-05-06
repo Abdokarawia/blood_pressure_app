@@ -511,10 +511,7 @@ class _GoalRemindersScreenState extends State<GoalRemindersScreen> {
                                               _currentValueController
                                                       .text
                                                       .isNotEmpty
-                                                  ? double.parse(
-                                                    _currentValueController
-                                                        .text,
-                                                  )
+                                                  ? 0
                                                   : _getDefaultCurrentValueForCategory(
                                                     _selectedCategory!,
                                                   ),

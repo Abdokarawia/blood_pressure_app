@@ -14,6 +14,7 @@ class MedicationInitial extends MedicationState {}
 
 class MedicationLoading extends MedicationState {}
 
+class NotificationsFetched  extends MedicationState {}
 class MedicationLoaded extends MedicationState {
   final List<Medication> medications;
 
