@@ -1,264 +1,379 @@
-import 'package:bloc/bloc.dart';
-import 'package:meta/meta.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../GoalReminders/data/HealthGoalModel.dart';
+import 'package:intl/intl.dart';
+
 import '../../HealthDataInput/data/health_data_model.dart';
+import 'health_data_analysis_state.dart';
 
-part 'health_data_analysis_state.dart';
-
-class HealthDataAnalysisCubit extends Cubit<HealthDataAnalysisState> {
+class HealthAnalysisCubit extends Cubit<HealthAnalysisState> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  HealthDataAnalysisCubit() : super(HealthDataAnalysisInitial());
+  // Cache for analyzed data
+  Map<String, dynamic> _analysisCache = {};
+
+  // Metric options for analysis
+  static const List<String> metricOptions = [
+    'Calories Burned',
+    'Active Minutes',
+    'Heart Rate',
+    'Hydration',
+    'Weight',
+    'Sleep Hours',
+    'Steps',
+    'Distance'
+  ];
+
+  // Maps metrics to their database field names
+  static const Map<String, String> metricToField = {
+    'Calories Burned': 'caloriesBurned',
+    'Active Minutes': 'activeMinutes',
+    'Heart Rate': 'heartRate',
+    'Hydration': 'hydration',
+    'Weight': 'weight',
+    'Sleep Hours': 'sleepHours',
+    'Steps': 'steps',
+    'Distance': 'distance',
+  };
+
+  // Define units for each metric for display
+  static const Map<String, String> metricUnits = {
+    'Calories Burned': 'kcal',
+    'Active Minutes': 'min',
+    'Heart Rate': 'bpm',
+    'Hydration': 'L',
+    'Weight': 'kg',
+    'Sleep Hours': 'hrs',
+    'Steps': 'steps',
+    'Distance': 'km',
+  };
+
+  HealthAnalysisCubit() : super(HealthAnalysisInitial());
 
   String? get _userId => _auth.currentUser?.uid;
 
-  Future<void> analyzeHealthData({
-    List<String> metrics = const [
-      'caloriesBurned',
-      'activeMinutes',
-      'heartRate',
-      'hydration',
-      'weight',
-      'sleepHours',
-      'steps',
-      'distance'
-    ],
-  }) async {
+  // Format a DateTime to a consistent string key for daily data storage
+  String _formatDateKey(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  // Load this week's health data for analysis
+  Future<void> loadThisWeekData() async {
     try {
-      emit(HealthDataAnalysisLoading());
+      emit(HealthAnalysisLoading());
 
-      final result = await analyzeHealthHistory(metrics: metrics);
-
-      if (result['status'] == 'success') {
-        emit(HealthDataAnalysisSuccess(result['analysis']));
-      } else if (result['status'] == 'empty') {
-        emit(HealthDataAnalysisEmpty(result['message']));
-      } else {
-        emit(HealthDataAnalysisFailure(result['message']));
+      final userId = _userId;
+      if (userId == null) {
+        emit(HealthAnalysisError('User not authenticated'));
+        return;
       }
+
+      // Get the current week's data
+      final weekData = await _getThisWeekData();
+
+      // Process the data for analysis
+      final weeklyAnalysis = _processWeeklyData(weekData);
+
+      emit(HealthAnalysisLoaded(weeklyAnalysis));
     } catch (e) {
-      emit(HealthDataAnalysisFailure('Failed to analyze health data: ${e.toString()}'));
+      emit(HealthAnalysisError('Failed to load weekly analysis: ${e.toString()}'));
     }
   }
 
-  Future<Map<String, dynamic>> analyzeHealthHistory({
-    List<String> metrics = const [
-      'caloriesBurned',
-      'activeMinutes',
-      'heartRate',
-      'hydration',
-      'weight',
-      'sleepHours',
-      'steps',
-      'distance'
-    ],
-  }) async {
+  // Get health data for the current week
+  Future<List<HealthDataModel>> _getThisWeekData() async {
     try {
       final userId = _userId;
       if (userId == null) {
         throw Exception('User not authenticated');
       }
 
-      // Query history collection
+      // Simply get the last 7 days of data
       final querySnapshot = await _firestore
           .collection('healthData')
           .doc(userId)
-          .collection('history')
-          .orderBy('timestamp', descending: true)
+          .collection('dailyData')
+          .limit(7)
           .get();
 
-      if (querySnapshot.docs.isEmpty) {
-        return {
-          'status': 'empty',
-          'message': 'No health data found in history'
-        };
-      }
-
-      final List<HealthDataModel> historyData = querySnapshot.docs
+      return querySnapshot.docs
           .map((doc) => HealthDataModel.fromMap(doc.data(), doc.id))
           .toList();
-
-      // Initialize result map
-      Map<String, dynamic> analysis = {
-        'dataPoints': historyData.length,
-        'period': {
-          'start': historyData.last.timestamp,
-          'end': historyData.first.timestamp,
-        },
-        'metrics': <String, Map<String, dynamic>>{},
-        'trends': <String, String>{},
-        'goalProgress': <String, Map<String, dynamic>>{},
-        'hasDataForMetric': <String, bool>{},  // Track which metrics have data
-      };
-
-      // Calculate statistics for each requested metric
-      for (final metric in metrics) {
-        // Skip metrics that don't exist in the model
-        if (!_isValidMetric(metric)) {
-          analysis['hasDataForMetric'][metric] = false;
-          continue;
-        }
-
-        // Extract values for this metric
-        List<num> values = _extractMetricValues(historyData, metric);
-
-        if (values.isEmpty || values.every((v) => v == 0)) {
-          analysis['hasDataForMetric'][metric] = false;
-          continue;
-        }
-
-        // Mark that this metric has data
-        analysis['hasDataForMetric'][metric] = true;
-
-        // Calculate statistics
-        num min = values.reduce((a, b) => a < b ? a : b);
-        num max = values.reduce((a, b) => a > b ? a : b);
-        double avg = values.reduce((a, b) => a + b) / values.length;
-
-        // Calculate trend (simple linear trend)
-        String trend = _calculateTrend(historyData, metric);
-
-        // Add to analysis
-        analysis['metrics'][metric] = {
-          'min': min,
-          'max': max,
-          'average': avg,
-          'current': values.first,
-          'change': values.length > 1 ? values.first - values.last : 0,
-          'changePercentage': values.length > 1 && values.last != 0
-              ? ((values.first - values.last) / values.last * 100).toStringAsFixed(1) + '%'
-              : '0%',
-        };
-
-        analysis['trends'][metric] = trend;
-
-        // Calculate goal progress if applicable
-        GoalCategory? category = _metricToGoalCategory(metric);
-        if (category != null) {
-          // Get goal target from Firestore for this category
-          double? target = await _getGoalTarget(userId, category);
-          if (target != null) {
-            double current = values.first.toDouble();
-            double progressPercentage = (current / target * 100).clamp(0, 100);
-
-            analysis['goalProgress'][metric] = {
-              'target': target,
-              'current': current,
-              'percentage': progressPercentage,
-              'remaining': target > current ? target - current : 0,
-            };
-          }
-        }
-      }
-
-      // Check if we have any data for any metric
-      bool hasAnyData = analysis['hasDataForMetric'].values.any((hasData) => hasData == true);
-      if (!hasAnyData) {
-        return {
-          'status': 'empty',
-          'message': 'No health data available for selected metrics'
-        };
-      }
-
-      return {
-        'status': 'success',
-        'analysis': analysis,
-      };
     } catch (e) {
-      return {
-        'status': 'error',
-        'message': 'Failed to analyze health data: ${e.toString()}'
-      };
+      throw Exception('Failed to get this week\'s health data: $e');
     }
   }
 
-  // Helper method to get goal target from Firestore
-  Future<double?> _getGoalTarget(String userId, GoalCategory category) async {
+  // Get health data for specific day
+  Future<HealthDataModel?> getHealthDataForDay(String dateKey) async {
     try {
-      final querySnapshot = await _firestore
-          .collection('health_goals')
-          .where('userId', isEqualTo: userId)
-          .where('category', isEqualTo: category.toString().split('.').last)
-          .orderBy('createdAt', descending: true)
-          .limit(1)
+      final userId = _userId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final docSnapshot = await _firestore
+          .collection('healthData')
+          .doc(userId)
+          .collection('dailyData')
+          .doc(dateKey)
           .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        final goalDoc = querySnapshot.docs.first;
-        final goal = HealthGoalModel.fromFirestore(goalDoc);
-        return goal.target;
+      if (docSnapshot.exists) {
+        return HealthDataModel.fromMap(docSnapshot.data()!, docSnapshot.id);
       }
+
       return null;
     } catch (e) {
-      print('Error fetching goal target: $e');
-      return null;
+      throw Exception('Failed to get health data for day: $e');
     }
   }
 
-  // Helper method to check if metric exists in the model
-  bool _isValidMetric(String metric) {
-    final validMetrics = [
-      'caloriesBurned',
-      'activeMinutes',
-      'heartRate',
-      'hydration',
-      'weight',
-      'goalWeightLoss',
-      'sleepHours',
-      'steps',
-      'distance'
-    ];
-    return validMetrics.contains(metric);
-  }
+  // Process weekly data for analysis
+  Map<String, dynamic> _processWeeklyData(List<HealthDataModel> weekData) {
+    // Create a map to store analysis results
+    Map<String, dynamic> analysis = {
+      'dailyData': <String, Map<String, dynamic>>{},
+      'averages': <String, double>{},
+      'totals': <String, double>{},
+      'maxValues': <String, double>{},
+      'minValues': <String, double>{},
+      'weeklyGoalProgress': <String, double>{},
+      'chartData': <String, List<dynamic>>{},
+    };
 
-  // Helper method to extract metric values from history data
-  List<num> _extractMetricValues(List<HealthDataModel> data, String metric) {
-    return data.map((entry) {
-      switch (metric) {
-        case 'caloriesBurned': return entry.caloriesBurned;
-        case 'activeMinutes': return entry.activeMinutes;
-        case 'heartRate': return entry.heartRate;
-        case 'hydration': return entry.hydration;
-        case 'weight': return entry.weight;
-        case 'goalWeightLoss': return entry.goalWeightLoss;
-        case 'sleepHours': return entry.sleepHours;
-        case 'steps': return entry.steps;
-        case 'distance': return entry.distance;
-        default: return 0;
+    // Initialize totals and averages
+    for (final metric in metricOptions) {
+      final field = metricToField[metric]!;
+      analysis['totals'][field] = 0.0;
+      analysis['averages'][field] = 0.0;
+      analysis['maxValues'][field] = double.negativeInfinity;
+      analysis['minValues'][field] = double.infinity;
+      analysis['chartData'][field] = <Map<String, dynamic>>[];
+    }
+
+    // Process each day's data
+    for (final dayData in weekData) {
+      final dateKey = _formatDateKey(dayData.timestamp);
+
+      // Store daily data
+      analysis['dailyData'][dateKey] = {
+        'caloriesBurned': dayData.caloriesBurned,
+        'activeMinutes': dayData.activeMinutes.toDouble(),
+        'heartRate': dayData.heartRate.toDouble(),
+        'hydration': dayData.hydration,
+        'weight': dayData.weight,
+        'sleepHours': dayData.sleepHours,
+        'steps': dayData.steps.toDouble(),
+        'distance': dayData.distance,
+        'date': dateKey,
+      };
+
+      // Update totals, max/min values, and chart data
+      for (final metric in metricOptions) {
+        final field = metricToField[metric]!;
+        final value = _getValueByField(dayData, field);
+
+        // Update total
+        analysis['totals'][field] = (analysis['totals'][field] ?? 0) + value;
+
+        // Update max/min
+        if (value > (analysis['maxValues'][field] ?? double.negativeInfinity)) {
+          analysis['maxValues'][field] = value;
+        }
+        if (value < (analysis['minValues'][field] ?? double.infinity) && value > 0) {
+          analysis['minValues'][field] = value;
+        }
+
+        // Add to chart data - Fix: Ensure we're adding a map and properly casting
+        (analysis['chartData'][field] as List).add({
+          'date': dateKey,
+          'value': value,
+        });
       }
-    }).toList();
+    }
+
+    // Calculate averages
+    if (weekData.isNotEmpty) {
+      for (final metric in metricOptions) {
+        final field = metricToField[metric]!;
+        analysis['averages'][field] = analysis['totals'][field] / weekData.length;
+      }
+    }
+
+    // Store in cache
+    _analysisCache['weeklyAnalysis'] = analysis;
+
+    return analysis;
   }
 
-  // Helper method to calculate trend
-  String _calculateTrend(List<HealthDataModel> data, String metric) {
-    if (data.length < 2) return 'stable';
-
-    final values = _extractMetricValues(data, metric);
-
-    // Simple trend calculation
-    if (values.first > values.last) {
-      return 'increasing';
-    } else if (values.first < values.last) {
-      return 'decreasing';
-    } else {
-      return 'stable';
+  // Helper to get value from a health data model by field name
+  double _getValueByField(HealthDataModel data, String field) {
+    switch (field) {
+      case 'caloriesBurned':
+        return data.caloriesBurned;
+      case 'activeMinutes':
+        return data.activeMinutes.toDouble();
+      case 'heartRate':
+        return data.heartRate.toDouble();
+      case 'hydration':
+        return data.hydration;
+      case 'weight':
+        return data.weight;
+      case 'sleepHours':
+        return data.sleepHours;
+      case 'steps':
+        return data.steps.toDouble();
+      case 'distance':
+        return data.distance;
+      default:
+        return 0.0;
     }
   }
 
-  // Helper method to map metric name to goal category
-  GoalCategory? _metricToGoalCategory(String metric) {
-    switch (metric) {
-      case 'caloriesBurned': return GoalCategory.caloriesBurned;
-      case 'activeMinutes': return GoalCategory.activeMinutes;
-      case 'hydration': return GoalCategory.hydration;
-      case 'weight': return GoalCategory.weight;
-      case 'sleepHours': return GoalCategory.sleepHours;
-      case 'steps': return GoalCategory.steps;
-      case 'distance': return GoalCategory.distanceCovered;
-      default: return null;
+  // Calculate progress towards goals
+  Future<Map<String, double>> calculateGoalProgress() async {
+    try {
+      final userId = _userId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get current goals
+      final goalSnapshot = await _firestore
+          .collection('health_goals')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final goals = goalSnapshot.docs
+          .map((doc) => HealthGoalModel.fromFirestore(doc))
+          .toList();
+
+      // Get current week's analysis
+      Map<String, dynamic> analysis = _analysisCache['weeklyAnalysis'] ?? {};
+      if (analysis.isEmpty) {
+        await loadThisWeekData();
+        analysis = _analysisCache['weeklyAnalysis'] ?? {};
+      }
+
+      // Calculate progress for each goal
+      Map<String, double> progress = {};
+
+      for (final goal in goals) {
+        final category = goal.category;
+        final target = goal.target;
+
+        // Get the relevant metric field for the goal category
+        String? field;
+        switch (category) {
+          case GoalCategory.steps:
+            field = 'steps';
+            break;
+          case GoalCategory.distanceCovered:
+            field = 'distance';
+            break;
+          case GoalCategory.activeMinutes:
+            field = 'activeMinutes';
+            break;
+          case GoalCategory.caloriesBurned:
+            field = 'caloriesBurned';
+            break;
+          case GoalCategory.weight:
+            field = 'weight';
+            break;
+          case GoalCategory.sleepHours:
+            field = 'sleepHours';
+            break;
+          case GoalCategory.hydration:
+            field = 'hydration';
+            break;
+          default:
+            continue;
+        }
+
+        // Calculate progress as percentage of target
+        double value = analysis['totals']?[field] ?? 0.0;
+        double progressValue = target > 0 ? (value / target).clamp(0.0, 1.0) : 0.0;
+
+        progress[field] = progressValue;
+      }
+
+      return progress;
+    } catch (e) {
+      throw Exception('Failed to calculate goal progress: $e');
     }
+  }
+
+  // Get recommendations based on current health data
+  List<String> getRecommendations() {
+    List<String> recommendations = [];
+
+    final analysis = _analysisCache['weeklyAnalysis'];
+    if (analysis == null) return recommendations;
+
+    // Steps recommendation
+    final avgSteps = analysis['averages']['steps'] ?? 0.0;
+    if (avgSteps < 5000) {
+      recommendations.add('Try to increase your daily steps to at least 5,000 steps per day.');
+    } else if (avgSteps < 10000) {
+      recommendations.add('You\'re on the right track with steps! Aim for 10,000 steps daily for optimal health.');
+    }
+
+    // Sleep recommendation
+    final avgSleep = analysis['averages']['sleepHours'] ?? 0.0;
+    if (avgSleep < 6) {
+      recommendations.add('You\'re getting less than 6 hours of sleep on average. Try to get 7-9 hours for better health.');
+    } else if (avgSleep > 9) {
+      recommendations.add('You\'re sleeping more than 9 hours on average. While rest is important, too much sleep can be associated with health issues.');
+    }
+
+    // Hydration recommendation
+    final avgHydration = analysis['averages']['hydration'] ?? 0.0;
+    if (avgHydration < 2.0) {
+      recommendations.add('Try to drink more water! Aim for at least 2 liters daily.');
+    }
+
+    // Active minutes recommendation
+    final avgActiveMinutes = analysis['averages']['activeMinutes'] ?? 0.0;
+    if (avgActiveMinutes < 30) {
+      recommendations.add('Aim for at least 30 minutes of physical activity each day.');
+    }
+
+    return recommendations;
+  }
+
+  // Get a summary of the week's health data
+  String getWeeklySummary() {
+    final analysis = _analysisCache['weeklyAnalysis'];
+    if (analysis == null) return 'No data available for this week.';
+
+    final totalSteps = analysis['totals']['steps'] ?? 0.0;
+    final totalCalories = analysis['totals']['caloriesBurned'] ?? 0.0;
+    final totalDistance = analysis['totals']['distance'] ?? 0.0;
+    final avgSleep = analysis['averages']['sleepHours'] ?? 0.0;
+
+    return 'This week, you took ${totalSteps.toInt()} steps, burned ${totalCalories.toInt()} calories, '
+        'traveled ${totalDistance.toStringAsFixed(2)} km, and averaged ${avgSleep.toStringAsFixed(1)} hours of sleep per night.';
+  }
+
+  // Get data formatted for charts
+  List<Map<String, dynamic>> getChartData(String metric) {
+    final analysis = _analysisCache['weeklyAnalysis'];
+    if (analysis == null) return [];
+
+    final field = metricToField[metric] ?? metric;
+
+    // Fix: Handle the type casting appropriately
+    List<dynamic> rawData = analysis['chartData'][field] ?? [];
+    return rawData.map((item) => item as Map<String, dynamic>).toList();
+  }
+
+  // Clear the analysis cache
+  void clearCache() {
+    _analysisCache.clear();
+    emit(HealthAnalysisInitial());
   }
 }

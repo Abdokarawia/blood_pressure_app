@@ -229,7 +229,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
           create: (context) => HealthDataCubit(),
         ),
         BlocProvider(
-          create: (context) => HealthDataAnalysisCubit(),
+          create: (context) => HealthAnalysisCubit(),
         ),
 
       ],
@@ -377,7 +377,7 @@ class _TabScreenState extends State<TabScreen> with TickerProviderStateMixin {
           case 3:
             return HealthDataInputScreen(animationController: _pageTransitionController);
           case 4:
-            return HealthDataAnalysisScreen();
+            return HealthAnalysisView();
           case 5:
             return EmergencyContactsScreen();
           case 6:

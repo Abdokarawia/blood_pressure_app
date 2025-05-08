@@ -1,26 +1,53 @@
-part of 'health_data_analysis_cubit.dart';
+import 'package:equatable/equatable.dart';
 
-@immutable
-abstract class HealthDataAnalysisState {}
+abstract class HealthAnalysisState extends Equatable {
+  const HealthAnalysisState();
 
-class HealthDataAnalysisInitial extends HealthDataAnalysisState {}
+  @override
+  List<Object?> get props => [];
+}
 
-class HealthDataAnalysisLoading extends HealthDataAnalysisState {}
+// Initial state when no analysis has been performed
+class HealthAnalysisInitial extends HealthAnalysisState {}
 
-class HealthDataAnalysisSuccess extends HealthDataAnalysisState {
+// Loading state while analysis is being performed
+class HealthAnalysisLoading extends HealthAnalysisState {}
+
+// State when analysis data is successfully loaded
+class HealthAnalysisLoaded extends HealthAnalysisState {
   final Map<String, dynamic> analysis;
 
-  HealthDataAnalysisSuccess(this.analysis);
+  const HealthAnalysisLoaded(this.analysis);
+
+  @override
+  List<Object?> get props => [analysis];
 }
 
-class HealthDataAnalysisEmpty extends HealthDataAnalysisState {
+// Error state when analysis fails
+class HealthAnalysisError extends HealthAnalysisState {
   final String message;
 
-  HealthDataAnalysisEmpty(this.message);
+  const HealthAnalysisError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }
 
-class HealthDataAnalysisFailure extends HealthDataAnalysisState {
-  final String error;
+// State when goals are being loaded
+class HealthGoalsLoading extends HealthAnalysisState {}
 
-  HealthDataAnalysisFailure(this.error);
+// State when goals are successfully loaded
+class HealthGoalsLoaded extends HealthAnalysisState {
+  @override
+  List<Object?> get props => [];
+}
+
+// Error state when loading goals fails
+class HealthGoalsError extends HealthAnalysisState {
+  final String message;
+
+  const HealthGoalsError(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

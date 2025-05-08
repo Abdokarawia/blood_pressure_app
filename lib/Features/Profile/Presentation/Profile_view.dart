@@ -1,5 +1,6 @@
 import 'package:blood_pressure_app/Features/Authentication/Presentation/View/login_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'dart:math';
@@ -720,30 +721,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Row(
                 children: [
                   // Logout Button
-              Expanded(
-              child: TextButton.icon(
-              onPressed: _showLogoutDialog,
-                icon: Icon(Iconsax.logout, color: Colors.blue.shade700, size: 20),
-                label: Text(
-                  'Log Out',
-                  style: GoogleFonts.poppins(
-                    color: Colors.blue.shade700,
-                    fontWeight: FontWeight.w500,
-                    fontSize: min(
-                      15,
-                      MediaQuery.of(context).size.width * 0.035,
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: _showLogoutDialog,
+                      icon: Icon(Iconsax.logout, color: Colors.blue.shade700, size: 20),
+                      label: Text(
+                        'Log Out',
+                        style: GoogleFonts.poppins(
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.w500,
+                          fontSize: min(
+                            15,
+                            MediaQuery.of(context).size.width * 0.035,
+                          ),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.blue.shade50,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.blue.shade50,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ),
 
                   const SizedBox(width: 12),
                   // Delete Account Button
@@ -914,107 +915,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Responsive font sizes
     final titleSize = MediaQuery.of(context).size.width < 360 ? 10.0 : 12.0;
     final valueSize = MediaQuery.of(context).size.width < 360 ? 20.0 : 22.0;
-    final subtitleSize = MediaQuery.of(context).size.width < 360 ? 9.0 : 11.0;
+    final subtitleSize = MediaQuery.of(context).size.width < 360 ? 10.0 : 12.0;
 
     return Expanded(
       child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: min(12, MediaQuery.of(context).size.height * 0.015),
-          horizontal: min(12, MediaQuery.of(context).size.width * 0.03),
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withOpacity(0.2),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
+          ),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: GoogleFonts.poppins(
                 fontSize: titleSize,
                 fontWeight: FontWeight.w500,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withOpacity(0.85),
               ),
             ),
-            SizedBox(
-              height: min(4, MediaQuery.of(context).size.height * 0.005),
-            ),
-            Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontSize: valueSize,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            Container(
-              margin: EdgeInsets.only(
-                top: min(6, MediaQuery.of(context).size.height * 0.008),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: min(10, MediaQuery.of(context).size.width * 0.025),
-                vertical: 3,
-              ),
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: accentColor.withOpacity(0.3)),
-              ),
-              child: Text(
-                subtitle,
-                style: GoogleFonts.poppins(
-                  fontSize: subtitleSize,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
+            const SizedBox(height: 5),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: valueSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGenderOption(String genderValue, IconData icon) {
-    // Responsive size adjustments
-    final double fontSize =
-    MediaQuery.of(context).size.width < 360 ? 13.0 : 14.0;
-    final double horizontalPadding =
-    MediaQuery.of(context).size.width < 360 ? 15.0 : 20.0;
-
-    final isSelected = _gender == genderValue;
-    return GestureDetector(
-      onTap: () => setState(() => _gender = genderValue),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: horizontalPadding,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: isSelected ? Colors.teal.shade700 : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.teal.shade700 : Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              genderValue,
-              style: GoogleFonts.poppins(
-                color: isSelected ? Colors.teal.shade700 : Colors.white,
-                fontWeight: FontWeight.w500,
-                fontSize: fontSize,
-              ),
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: subtitleSize,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1025,14 +982,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildInfoItem(
       String label,
       TextEditingController controller,
-      String unit,
+      String suffix,
       IconData icon,
       ) {
-    // Responsive font sizes and width
+    // Responsive font sizes
     final labelSize = MediaQuery.of(context).size.width < 360 ? 14.0 : 16.0;
     final valueSize = MediaQuery.of(context).size.width < 360 ? 14.0 : 16.0;
-    final textFieldWidth =
-    MediaQuery.of(context).size.width < 360 ? 80.0 : 100.0;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1056,12 +1011,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const Spacer(),
         _editMode
             ? Container(
-          width: textFieldWidth,
+          width: 120,
           height: 40,
           child: TextField(
             controller: controller,
-            keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
+            keyboardType: label == 'Phone'
+                ? TextInputType.phone
+                : TextInputType.number,
+            inputFormatters: label == 'Phone'
+                ? [FilteringTextInputFormatter.digitsOnly]
+                : [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
             style: GoogleFonts.poppins(
               fontSize: valueSize,
               color: Colors.teal.shade700,
@@ -1072,12 +1032,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 horizontal: 12,
                 vertical: 0,
               ),
-              suffix: Text(
-                unit,
-                style: GoogleFonts.poppins(
-                  color: Colors.grey.shade600,
-                  fontSize: max(11, min(13, valueSize - 3)),
-                ),
+              suffixText: suffix,
+              suffixStyle: GoogleFonts.poppins(
+                fontSize: valueSize - 2,
+                color: Colors.grey.shade500,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
@@ -1094,7 +1052,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         )
             : Text(
-          '${controller.text} $unit',
+          controller.text + (suffix.isNotEmpty ? ' $suffix' : ''),
           style: GoogleFonts.poppins(
             fontSize: valueSize,
             fontWeight: FontWeight.w500,
@@ -1105,14 +1063,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDivider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Divider(color: Colors.grey.shade200, thickness: 1.5),
+  // Build gender selector widget
+  Widget _buildGenderOption(String gender, IconData icon) {
+    bool isSelected = _gender == gender;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _gender = gender;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.white.withOpacity(0.2)
+              : Colors.transparent,
+          border: Border.all(
+            color: Colors.white.withOpacity(0.4),
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: Colors.white,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              gender,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  // Method to show logout dialog and handle logout
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Divider(
+        color: Colors.grey.shade200,
+        thickness: 1,
+      ),
+    );
+  }
+
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -1134,7 +1138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         content: Text(
-          'Are you sure you want to log out from your account?',
+          'Are you sure you want to log out of your account?',
           style: GoogleFonts.poppins(fontSize: 15),
         ),
         actions: [
@@ -1149,22 +1153,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () async {
-              try {
-                await FirebaseAuth.instance.signOut();
-                // Navigate to login screen and remove all previous routes
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      (route) => false, // This will remove all previous routes
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to log out: ${e.toString()}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
+            onPressed: () {
+              Navigator.pop(context);
+              _logOut();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade700,
@@ -1187,4 +1178,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
