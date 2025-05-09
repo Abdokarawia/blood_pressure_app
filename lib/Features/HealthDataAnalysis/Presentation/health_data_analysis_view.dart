@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../GoalReminders/data/HealthGoalModel.dart';
 import '../Manger/health_data_analysis_cubit.dart';
 import '../Manger/health_data_analysis_state.dart';
 
@@ -46,7 +45,6 @@ class _HealthAnalysisViewState extends State<HealthAnalysisView> with SingleTick
           tabs: const [
             Tab(text: 'Overview'),
             Tab(text: 'Trends'),
-            Tab(text: 'Goals'),
           ],
         ),
       ),
@@ -76,7 +74,6 @@ class _HealthAnalysisViewState extends State<HealthAnalysisView> with SingleTick
               children: [
                 _buildOverviewTab(state.analysis),
                 _buildTrendsTab(state.analysis),
-                _buildGoalsTab(state.analysis),
               ],
             );
           }
@@ -597,141 +594,5 @@ class _HealthAnalysisViewState extends State<HealthAnalysisView> with SingleTick
     );
   }
 
-  Widget _buildGoalsTab(Map<String, dynamic> analysis) {
-    return FutureBuilder<Map<String, double>>(
-      future: context.read<HealthAnalysisCubit>().calculateGoalProgress(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
-                const SizedBox(height: 16),
-                Text('Failed to load goals: ${snapshot.error}',
-                    textAlign: TextAlign.center),
-              ],
-            ),
-          );
-        }
-
-        final goalProgress = snapshot.data ?? {};
-
-        if (goalProgress.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.track_changes, size: 48, color: Colors.grey),
-                SizedBox(height: 16),
-                Text('No health goals set'),
-                SizedBox(height: 8),
-                Text('Create goals to track your progress',
-                    style: TextStyle(color: Colors.grey)),
-              ],
-            ),
-          );
-        }
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Weekly Goal Progress',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-
-              // Goal progress indicators
-              ...goalProgress.entries.map((entry) =>
-                  _buildGoalProgressItem(entry.key, entry.value)
-              ).toList(),
-
-              const SizedBox(height: 24),
-              Center(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // Navigate to goal setting page
-                    // Navigator.push(context, MaterialPageRoute(
-                    //   builder: (context) => const GoalSettingPage()
-                    // ));
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add New Goal'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildGoalProgressItem(String fieldName, double progress) {
-    // Map field name back to display name
-    String displayName = '';
-    String unit = '';
-
-    for (final entry in HealthAnalysisCubit.metricToField.entries) {
-      if (entry.value == fieldName) {
-        displayName = entry.key;
-        unit = HealthAnalysisCubit.metricUnits[entry.key] ?? '';
-        break;
-      }
-    }
-
-    if (displayName.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // Calculate color based on progress
-    Color progressColor;
-    if (progress >= 0.8) {
-      progressColor = Colors.green;
-    } else if (progress >= 0.5) {
-      progressColor = Colors.orange;
-    } else {
-      progressColor = Colors.red;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                displayName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                '${(progress * 100).toInt()}%',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: progressColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.grey[200],
-            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-            minHeight: 10,
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ],
-      ),
-    );
-  }
 }

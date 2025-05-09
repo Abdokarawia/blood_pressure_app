@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
@@ -11,7 +14,7 @@ class HomeView extends StatefulWidget {
   final AnimationController animationController;
   Map<String, dynamic> userStats;
 
-   HomeView({
+  HomeView({
     super.key,
     required this.userStats,
     required this.animationController,
@@ -22,7 +25,6 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
-
   // API related variables
   final Dio _dio = Dio();
   bool _isLoading = false;
@@ -31,29 +33,47 @@ class _HomeViewState extends State<HomeView> {
 
   // Health Analysis Data
   String _selectedTab = 'sleep';
-  final List<Map<String, dynamic>> _mockSleepData = [
-    {
-      'date': 'Mon',
-      'hours': 7.5,
-      'quality': 'Good',
-      'deepSleep': 3.2,
-      'lightSleep': 4.3,
-    },
-    {
-      'date': 'Tue',
-      'hours': 8.2,
-      'quality': 'Excellent',
-      'deepSleep': 3.8,
-      'lightSleep': 4.4,
-    },
-    {
-      'date': 'Wed',
-      'hours': 6.8,
-      'quality': 'Average',
-      'deepSleep': 2.5,
-      'lightSleep': 4.3,
-    },
+
+  double _averageSleepHours = 0.0;
+
+  // List of all sleep tips
+  final List<String> _allSleepTips = const [
+    'Maintain a consistent sleep schedule daily',
+    'Avoid caffeine and screens 2 hours before bed',
+    'Keep bedroom dark, quiet and cool',
+    'Exercise regularly, but not close to bedtime',
+    'Limit daytime naps to 20-30 minutes',
+    'Create a relaxing bedtime routine',
+    'Use comfortable mattress and pillows',
+    'Manage stress with relaxation techniques before bed',
+    'Avoid large meals and alcohol before sleeping',
   ];
+
+  Future<void> _loadAverageSleepHours() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+
+
+
+      // Call the function to get average sleep hours
+      final average = await getAverageSleepHours();
+
+      setState(() {
+        _averageSleepHours =  average;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load average sleep: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+
 
   final Map<String, dynamic> _weightLossPlan = {
     'currentWeight': 82,
@@ -65,7 +85,6 @@ class _HomeViewState extends State<HomeView> {
     'weeklyExercise': 4,
     'estimatedWeeks': 8,
   };
-
 
   final List<Map<String, dynamic>> _sleepMealRecommendations = [
     {
@@ -90,30 +109,84 @@ class _HomeViewState extends State<HomeView> {
       'tips': 'Small snack 30-60 min before bed can promote sleep.',
       'color': Colors.purple.shade300,
     },
+    {
+      'time': 'Light Dinner',
+      'calories': 450,
+      'foods': [
+        {'name': 'Turkey Breast', 'calories': 200, 'icon': Iconsax.cake},
+        {'name': 'Sweet Potato', 'calories': 150, 'icon': Iconsax.cake},
+        {'name': 'Spinach Salad', 'calories': 100, 'icon': Iconsax.cake},
+      ],
+      'tips': 'Turkey contains tryptophan which may help with sleep.',
+      'color': Colors.teal.shade400,
+    },
+    {
+      'time': 'Evening Meal',
+      'calories': 400,
+      'foods': [
+        {'name': 'Chicken Soup', 'calories': 200, 'icon': Iconsax.coffee},
+        {'name': 'Whole Grain Bread', 'calories': 120, 'icon': Iconsax.cake},
+        {'name': 'Sliced Avocado', 'calories': 80, 'icon': Iconsax.cake},
+      ],
+      'tips': 'Warm soup can be soothing before bed. Eat 3 hours before sleep.',
+      'color': Colors.green.shade300,
+    },
+    {
+      'time': 'Pre-Sleep Snack',
+      'calories': 180,
+      'foods': [
+        {'name': 'Greek Yogurt', 'calories': 100, 'icon': Iconsax.cup},
+        {'name': 'Cherry Juice', 'calories': 50, 'icon': Iconsax.cup},
+        {'name': 'Walnuts', 'calories': 30, 'icon': Iconsax.cake},
+      ],
+      'tips': 'Cherries contain natural melatonin that may help with sleep quality.',
+      'color': Colors.pink.shade300,
+    },
+    {
+      'time': 'Evening Light Meal',
+      'calories': 350,
+      'foods': [
+        {'name': 'Lentil Soup', 'calories': 180, 'icon': Iconsax.coffee},
+        {'name': 'Brown Rice', 'calories': 120, 'icon': Iconsax.cake},
+        {'name': 'Steamed Carrots', 'calories': 50, 'icon': Iconsax.cake},
+      ],
+      'tips': 'Complex carbs can boost serotonin to help you sleep better.',
+      'color': Colors.amber.shade400,
+    },
+    {
+      'time': 'Night Protein Snack',
+      'calories': 190,
+      'foods': [
+        {'name': 'Cottage Cheese', 'calories': 120, 'icon': Iconsax.cup},
+        {'name': 'Kiwi Fruit', 'calories': 50, 'icon': Iconsax.cake},
+        {'name': 'Valerian Tea', 'calories': 20, 'icon': Iconsax.cup},
+      ],
+      'tips': 'Slow-digesting protein like cottage cheese provides amino acids through the night.',
+      'color': Colors.blue.shade300,
+    },
   ];
-
-  final Map<String, dynamic> _sleepCaloriesData = {
-    'caloriesBurned': 420,
-    'caloriesPerHour': 60,
-    'optimalSleepCalories': 480,
-    'comparison': 'You burned 87.5% of optimal calories during sleep',
-  };
 
   @override
   void initState() {
     super.initState();
+    _loadAverageSleepHours();
+
     if (_selectedTab == 'weight') {
       fetchWeightLossPlan();
     }
   }
 
-  // Calculate average sleep hours
-  double _calculateAverageSleep() {
-    double totalHours = 0;
-    for (var day in _mockSleepData) {
-      totalHours += day['hours'] as double;
-    }
-    return totalHours / _mockSleepData.length;
+
+  // Select 3 random tips from the list
+  List<String> _getRandomTips(int count) {
+    // Create a copy of the original list to avoid modifying it
+    final tipsCopy = List<String>.from(_allSleepTips);
+
+    // Shuffle the list
+    tipsCopy.shuffle(Random());
+
+    // Return the first 'count' elements or all if less than 'count'
+    return tipsCopy.take(count).toList();
   }
 
   // Update your existing fetchWeightLossPlan function:
@@ -147,7 +220,7 @@ class _HomeViewState extends State<HomeView> {
         "$apiUrl/weight-loss-plan",
         data: {
           "current_weight_kg": widget.userStats['weight'],
-          "sleep_hours": _calculateAverageSleep(),
+          "sleep_hours": 7.5,
           "weight_loss_required": 10,
         },
         options: Options(headers: {'Content-Type': 'application/json'}),
@@ -291,8 +364,42 @@ class _HomeViewState extends State<HomeView> {
         return _buildSleepAnalysisTab(isSmallScreen);
     }
   }
+  Future<double> getAverageSleepHours({int days = 7}) async {
+    try {
+      // Get the current user's UID directly from Firebase Auth
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Get all health data for the user without date filtering
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('healthData')
+          .doc(userId)
+          .collection('dailyData')
+          .get();
+
+      // Extract sleep hours from the documents
+      final sleepHoursList = querySnapshot.docs
+          .map((doc) => doc.data()['sleepHours'] ?? 0.0)
+          .where((hours) => hours > 0) // Filter out zero values
+          .toList();
+
+      // Calculate the average sleep hours
+      if (sleepHoursList.isEmpty) {
+        return 0.0;
+      }
+
+      final totalSleepHours = sleepHoursList.reduce((a, b) => a + b);
+      return totalSleepHours / sleepHoursList.length;
+    } catch (e) {
+      throw Exception('Failed to calculate average sleep hours: $e');
+    }
+  }
 
   Widget _buildSleepAnalysisTab(bool isSmallScreen) {
+    final randomTips = _getRandomTips(3);
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,7 +435,7 @@ class _HomeViewState extends State<HomeView> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'You\'re getting an average of ${_calculateAverageSleep().toStringAsFixed(1)} hours of sleep daily. This is slightly below the general recommendation of 7-9 hours for adults. You might want to increase your sleep duration slightly, especially on Wednesdays.',
+                        'You\'re getting an average of ${_averageSleepHours.toStringAsFixed(1)} hours of sleep daily. This is slightly below the general recommendation of 7-9 hours for adults. You might want to increase your sleep duration slightly, especially on Wednesdays.',
                         style: GoogleFonts.poppins(
                           fontSize: isSmallScreen ? 12 : 14,
                           color: Colors.grey.shade700,
@@ -344,13 +451,8 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ),
                       const SizedBox(height: 5),
-                      _buildTipItem(
-                        'Maintain a consistent sleep schedule daily',
-                      ),
-                      _buildTipItem(
-                        'Avoid caffeine and screens 2 hours before bed',
-                      ),
-                      _buildTipItem('Keep bedroom dark, quiet and cool'),
+                      ...randomTips.map((tip) => _buildTipItem(tip)).toList(),
+
                     ],
                   ),
                 ),
@@ -373,8 +475,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
                 const SizedBox(height: 15),
-                for (var meal in _sleepMealRecommendations)
-                  _buildMealRecommendationCard(meal, isSmallScreen),
+                  _buildMealRecommendationCard(_sleepMealRecommendations[Random().nextInt(_sleepMealRecommendations.length)], isSmallScreen),
               ],
             ),
           ),
@@ -940,7 +1041,6 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-
   Widget _buildTipItem(String tip) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
@@ -1117,17 +1217,15 @@ class _HomeViewState extends State<HomeView> {
     String shareText = 'Check out my $title from Health App\n\n';
 
     if (title == 'Weekly Sleep Report') {
-      shareText +=
-          'Average Sleep: ${_calculateAverageSleep().toStringAsFixed(1)} hours\n';
-      shareText +=
-          'Sleep Quality: ${_mockSleepData.map((e) => '${e['date']}: ${e['hours']}h (${e['quality']})').join('\n')}';
+      shareText += 'Average Sleep: ${_averageSleepHours.toStringAsFixed(1)} hours\n';
     } else if (title == 'Weight Loss Plan') {
       shareText += 'Current Weight: ${_weightLossPlan['currentWeight']}kg\n';
       shareText += 'Target Weight: ${_weightLossPlan['targetWeight']}kg\n';
       shareText += 'Estimated Time: ${_weightLossPlan['estimatedWeeks']} weeks';
     } else if (title == 'Body Mass Index') {
       shareText += 'BMI: ${widget.userStats['bmi']}\n';
-      shareText += 'Category: ${_getBMICategory(widget.userStats['bmi'])['name']}\n';
+      shareText +=
+          'Category: ${_getBMICategory(widget.userStats['bmi'])['name']}\n';
       shareText += 'Weight: ${widget.userStats['weight']}kg\n';
       shareText += 'Height: ${widget.userStats['height']}cm';
     } else if (title == 'Sleep-Friendly Meal Plan') {
@@ -1493,7 +1591,8 @@ class _HomeViewState extends State<HomeView> {
                         ),
                       ),
                     ),
-                    if (widget.userStats['bmi'] >= 15 && widget.userStats['bmi'] <= 40)
+                    if (widget.userStats['bmi'] >= 15 &&
+                        widget.userStats['bmi'] <= 40)
                       Positioned(
                         left:
                             ((widget.userStats['bmi'] - 15) / 25) *
